@@ -1,4 +1,5 @@
-export type ImportRow={id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string};
+export type TicketKind='flight'|'train'|'high-speed';
+export type ImportRow={ticket?:TicketKind|'';id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string};
 function parsePlainItinerary(text:string,source:string):ImportRow[]{
  const rows:ImportRow[]=[];let day='',date='';
  for(const raw of text.replace(/\r/g,'').split('\n')){let line=raw.replace(/：/g,':').trim();if(!line||/^(?:[（(]?來源|資料查證|资料查证|參考|参考|表\s*\d|查證日期|查证日期)/.test(line))continue;
@@ -13,7 +14,7 @@ function parsePlainItinerary(text:string,source:string):ImportRow[]{
  const titleText=line.slice(timeCell.length).replace(/^[\s|,\t:→~–—-]+|[\s|,\t:→~–—-]+$/g,'').trim();if(!titleText)continue;
  const cols=titleText.split(/\t|\|/).map(s=>s.trim()).filter(Boolean);const title=cols[0]||titleText;
  const include=!!timeCell;
- rows.push({id:`${source}-${rows.length}`,day,date,...timing,title,place:cols[1]||'',kind:classify(title),source:raw,include,hint:include?timing.hint:'未能確認呢行係活動，預設唔匯入；如有需要請勾選同補資料。'});
+ rows.push({id:`${source}-${rows.length}`,day,date,...timing,title,place:cols[1]||'',kind:classify(title),ticket:ticketKind(title),source:raw,include,hint:include?timing.hint:'未能確認呢行係活動，預設唔匯入；如有需要請勾選同補資料。'});
  }return rows;
 }
 export function resolveDay(row:ImportRow,start:string){if(row.date&&(!Number.isFinite(Date.parse(row.date))||new Date(row.date).toISOString().slice(0,10)!==row.date))return NaN;return row.date?Math.round((Date.parse(row.date)-Date.parse(start))/86400000)+1:Number(row.day)||0;}
@@ -32,7 +33,9 @@ export function itineraryMetadata(text:string):{destination:string;choices:DateC
  }
  return {destination,choices};
 }
-function classify(title:string){return /高鐵|高铁|出發|出发|的士|地鐵|地铁|車站|南站|西九龍|西九龙|航班|機場|机场|列車|列车|火車|火车|flight|train|station|京都站|新幹線|交通/i.test(title)?'交通':/退房|酒店|住宿|飯店|旅宿|hotel|check.?in/i.test(title)?'酒店':/餐|宵夜|小食|拉麵|lunch|dinner|breakfast/i.test(title)?'美食':/步行街|逛|夜市|購物|购物|shopping/i.test(title)?'購物':'景點'}
+export function ticketKind(title:string):TicketKind|''{if(/航班|機場|机场|飛機|飞机|飛往|飞往|起飛|起飞|登機|登机|航空|flight|airport|airlines?|\b(?:CX|UO|HX|JL|NH|MM|TR|KE|OZ|CI|BR|SQ|TG|AK|FD|VJ|MU|CA|CZ|HO|9C|ZH|7C|LJ|TW|IT|GK|BX)\s?\d{2,4}\b/i.test(title))return 'flight';if(/高鐵|高铁|新幹線|新干线|shinkansen|HSR|KTX|動車|动车|G\d{2,4}\b/i.test(title))return 'high-speed';if(/火車|火车|列車|列车|鐵路|铁路|\bJR\b|\btrain\b|\brail(?:way)?\b|特急|急行|Express/i.test(title))return 'train';return ''}
+export function flightNumber(title:string){return title.match(/\b([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})\b/)?.slice(1).join('')||''}
+export function classify(title:string){if(ticketKind(title))return '交通';return /高鐵|高铁|出發|出发|的士|地鐵|地铁|車站|南站|西九龍|西九龙|航班|機場|机场|列車|列车|火車|火车|flight|\btrain\b|station|京都站|新幹線|交通/i.test(title)?'交通':/退房|酒店|住宿|飯店|旅宿|hotel|check.?in/i.test(title)?'酒店':/餐|宵夜|小食|拉麵|拉面|壽司|寿司|燒肉|烧肉|居酒屋|咖啡|café|cafe|甜品|茶室|食堂|restaurant|lunch|dinner|breakfast|brunch|ramen|sushi|bar\b/i.test(title)?'美食':/步行街|逛|夜市|購物|购物|shopping/i.test(title)?'購物':/演唱會|演出|表演|音樂會|展覽|体验|體驗|工作坊|tour|show|concert/i.test(title)?'活動':'景點'}
 function parseTime(value:string){
  const timeCell=value.replace(/：|時/g,':');const times=[...timeCell.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)/g)].map(t=>`${t[1].padStart(2,'0')}:${t[2]}`);
  const alternative=times.length>1&&/[／/或]/.test(timeCell);const range=times.length===2&&/[–—~～→-]/.test(timeCell);
@@ -63,7 +66,7 @@ export function parseItinerary(text:string,source:string):ImportRow[]{
   const explicitDay=value(cols.day).replace(/^(?:Day\s*|第\s*)/i,'').replace(/[日天]$/,'');const rowDay=explicitDay?String(dayNumber(explicitDay)):day;
   const rawDate=value(cols.date);const dm=rawDate.match(/^(20\d{2})\s*[-/年]\s*(\d{1,2})\s*[-/月]\s*(\d{1,2})日?$/);const date=dm?dateValue(dm[1],dm[2],dm[3]):'';
   const inferredPlace=title.replace(/（[\s\S]*|\([\s\S]*/,'').replace(/^(?:晚餐|午餐|早餐)[：:]?/,'').trim();
-  rows.push({id:`${source}-${rows.length}`,day:date?'':rowDay,date,...timing,title,place:cols.place>=0?value(cols.place):/交通|酒店/.test(classify(title))?'':inferredPlace,kind:classify(title),source:raw,include:true,hint:[timing.hint,rawDate&&!date?'日期格式未能確認，請自行填寫日期。':''].filter(Boolean).join(' ')});
+  rows.push({id:`${source}-${rows.length}`,day:date?'':rowDay,date,...timing,title,place:cols.place>=0?value(cols.place):/交通|酒店/.test(classify(title))?'':inferredPlace,kind:classify(title),ticket:ticketKind(title),source:raw,include:true,hint:[timing.hint,rawDate&&!date?'日期格式未能確認，請自行填寫日期。':''].filter(Boolean).join(' ')});
  }
  if(!rows.length){const outside=text.replace(/\[\[TABLE\]\][\s\S]*?\[\[\/TABLE\]\]/g,'');return parsePlainItinerary(outside,source)}
  return rows;

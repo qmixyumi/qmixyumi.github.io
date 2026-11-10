@@ -13,7 +13,7 @@ npm ci
 npm run dev
 ```
 
-For validation: `npm run typecheck`, `npm test`, `npm run build`. The build prints the fresh `pages-output/...` directory. Existing root assets are retained as historical files; they are not included in the new deployment artifact. Do not upload node_modules, .env files, personal backups or itinerary originals.
+For validation: `npm run typecheck`, `npm test`, `npm run build`. The build prints the fresh `pages-output/...` directory. Old root build files were removed: the site is deployed only from the GitHub Actions artifact. Do not upload node_modules, .env files, personal backups or itinerary originals.
 
 ## Sync and recovery
 

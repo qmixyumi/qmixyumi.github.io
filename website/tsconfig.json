@@ -17,13 +17,9 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
-    "paths": {
-      "@/*": [
-        "./*"
-      ]
-    },
     "types": [
-      "node"
+      "node",
+      "vite/client"
     ]
   },
   "include": [

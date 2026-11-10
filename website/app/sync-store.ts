@@ -1,0 +1,8 @@
+import type {Data} from './model';
+export type SyncBase={data:Data;version:number};
+export type Recovery={id:string;at:string;reason:string;data:Data};
+function open():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const r=indexedDB.open('adventure-sync',1);r.onupgradeneeded=()=>{r.result.createObjectStore('base');r.result.createObjectStore('recovery',{keyPath:'id'})};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
+export async function readBase(key:string):Promise<SyncBase|undefined>{const db=await open();try{return await new Promise((resolve,reject)=>{const r=db.transaction('base').objectStore('base').get(key);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}finally{db.close()}}
+export async function writeBase(key:string,value:SyncBase){const db=await open();try{await new Promise<void>((resolve,reject)=>{const t=db.transaction('base','readwrite');t.objectStore('base').put(value,key);t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{db.close()}}
+export async function checkpoint(data:Data,reason:string){const db=await open();try{await new Promise<void>((resolve,reject)=>{const t=db.transaction('recovery','readwrite');t.objectStore('recovery').put({id:crypto.randomUUID(),at:new Date().toISOString(),reason,data});t.oncomplete=()=>resolve();t.onerror=()=>reject(t.error);t.onabort=()=>reject(t.error)})}finally{db.close()}}
+export async function recoveries():Promise<Recovery[]>{const db=await open();try{return await new Promise((resolve,reject)=>{const r=db.transaction('recovery').objectStore('recovery').getAll();r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}finally{db.close()}}

@@ -1,0 +1,44 @@
+ 'use client';
+import {useState,useEffect,useRef} from 'react';
+import {Data,validData} from './model';
+import {defaultConfig,getCloudClient} from './cloud-client';
+import {syncAttachments} from './attachment-sync';
+import {readLocalFile} from './attachments';
+import {SyncEngine,type SyncState} from './sync-engine';
+import {readBase,writeBase,checkpoint,recoveries} from './sync-store';
+import {emptyData,same,type Choices} from './sync-merge';
+export type CloudAuthStatus='checking'|'signed-in'|'signed-out'|'error';
+const initial:SyncState={phase:'idle',message:'登入後可啟用自動同步',conflicts:[]};
+function download(name:string,value:unknown){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function describe(v:unknown){if(v===undefined)return '已移除／未設定';if(typeof v==='string'&&v.startsWith('data:image'))return '照片內容（可先匯出衝突備份）';const text=typeof v==='string'?v:JSON.stringify(v);return text.length>600?text.slice(0,600)+'…':text}
+export default function Cloud({data,ready,active,onLoad,onAuthStatus,onSyncStatus}:{data:Data;ready:boolean;active:boolean;onLoad:(d:Data)=>void;onAuthStatus:(s:CloudAuthStatus)=>void;onSyncStatus:(s:string)=>void}){
+ const client=getCloudClient();const latest=useRef({data,onLoad,onAuthStatus,onSyncStatus,ready});latest.current={data,onLoad,onAuthStatus,onSyncStatus,ready};
+ const [user,setUser]=useState<{id:string;email:string}|null>(null),[enabled,setEnabled]=useState(false),[state,setState]=useState<SyncState>(initial),[choices,setChoices]=useState<Choices>({}),[online,setOnline]=useState(navigator.onLine);
+ const engine=useRef<SyncEngine|null>(null),userRef=useRef(''),sessionKey=useRef(''),generation=useRef(0);
+ function notify(s:SyncState){setState(prev=>({...s,last:s.last||prev.last}));latest.current.onSyncStatus(s.message)}
+ useEffect(()=>{const up=()=>setOnline(true),down=()=>setOnline(false);window.addEventListener('online',up);window.addEventListener('offline',down);let alive=true;
+ const apply=(session:{user:{id:string;email?:string}}|null)=>{if(!alive)return;const id=session?.user.id||'';latest.current.onAuthStatus(id?'signed-in':'signed-out');if(userRef.current!==id){engine.current?.stop();engine.current=null;generation.current++;userRef.current=id;setChoices({});setState(initial);setUser(session?{id,email:session.user.email||id}:null);let opt=false;try{opt=!!id&&localStorage.getItem('adventure-auto-sync:'+id)==='on'}catch{}setEnabled(opt)}};
+ const sub=client.auth.onAuthStateChange((_event,session)=>apply(session));client.auth.getSession().then(({data,error})=>{if(!alive)return;if(error){latest.current.onAuthStatus('error');notify({...initial,phase:'error',message:'未能確認登入，請重試'})}else apply(data.session)}).catch(()=>{if(alive){latest.current.onAuthStatus('error');notify({...initial,phase:'error',message:'未能確認登入，請重新載入網站'})}});
+ return()=>{alive=false;engine.current?.stop();sub.data.subscription.unsubscribe();window.removeEventListener('online',up);window.removeEventListener('offline',down)};
+ },[client]);
+ useEffect(()=>{if(!ready||!user||!enabled){engine.current?.stop();engine.current=null;return}let alive=true;const epoch=++generation.current;
+ (async()=>{try{let tabId=sessionStorage.getItem('adventure-sync-tab');if(!tabId){tabId=crypto.randomUUID();sessionStorage.setItem('adventure-sync-tab',tabId)}const key=defaultConfig.url+'|'+user.id+'|'+tabId;sessionKey.current=key;const base=await readBase(key);if(!alive||epoch!==generation.current)return;if(base&&!validData(base.data))throw Error('同步基準格式不相容，請先匯出備份。');
+ const current=new SyncEngine({get:()=>latest.current.data,apply:d=>{if(same(d,latest.current.data))return;latest.current.data=d;latest.current.onLoad(d)},
+ read:async()=>{const {data:row,error}=await client.from('adventure_state').select('payload,version').eq('id','qmi-yumi').abortSignal(AbortSignal.timeout(20000)).single();if(error)throw Error('未能讀取私人雲端：'+error.message);return {data:row.payload===null?emptyData():row.payload,version:row.version}},
+ write:async(version,payload)=>{const {data:next,error}=await client.rpc('save_adventure',{expected_version:version,new_payload:payload}).abortSignal(AbortSignal.timeout(20000));if(error)throw Error('本機修改已保留，稍後會重新核對：'+error.message);return next as number},
+ attachments:d=>syncAttachments(d,client,readLocalFile,message=>notify({phase:'busy',message,conflicts:[]})),persist:b=>writeBase(key,b),checkpoint,valid:validData,notify},base);engine.current=current;await current.run();
+ }catch(e){if(alive)notify({phase:'error',message:e instanceof Error?e.message:'未能啟動同步',conflicts:[]})}})();
+ return()=>{alive=false;generation.current++;engine.current?.stop();engine.current=null};
+ },[ready,user?.id,enabled,client]);
+ useEffect(()=>{if(!enabled||!user||!ready||!online)return;const timer=setTimeout(()=>void engine.current?.run(),1800);return()=>clearTimeout(timer)},[data,enabled,user?.id,ready,online]);
+ useEffect(()=>{const tick=()=>{if(navigator.onLine&&document.visibilityState==='visible')void engine.current?.run()};const timer=setInterval(tick,15000);window.addEventListener('focus',tick);window.addEventListener('online',tick);return()=>{clearInterval(timer);window.removeEventListener('focus',tick);window.removeEventListener('online',tick)}},[]);
+ function toggle(){if(!user)return;const next=!enabled;try{localStorage.setItem('adventure-auto-sync:'+user.id,next?'on':'off')}catch{}if(!next){engine.current?.stop();notify({...initial,message:'已暫停自動同步，修改仍留喺本機'})}setEnabled(next)}
+ const status=!online?'離線：修改會先留喺本機，連線後再同步':!user?'未登入：目前只儲存喺本機':!enabled?'自動同步未啟用':state.message;
+ useEffect(()=>{latest.current.onSyncStatus(status)},[status]);
+ return <section hidden={!active} className="panel settings cloud-panel"><span className="eyebrow">PRIVATE PARTY / AUTO SYNC</span><h2>共用雲端連接</h2><p>只限獲授權 Google 帳戶。不同項目嘅修改會合併；同一欄位撞修改會先提示。唔會因登入而直接取代本機資料。</p>
+ {!user?<button className="primary" disabled={!online} onClick={async()=>{const {error}=await client.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/?auth=google',queryParams:{prompt:'select_account'}}});if(error)notify({...initial,phase:'error',message:error.message})}}>使用 Google 登入</button>:<><p>已登入：<b>{user.email}</b></p><div className="actions"><button className="primary" disabled={!ready||state.phase==='busy'} onClick={toggle}>{enabled?'暫停自動同步':'啟用自動同步'}</button><button className="secondary" disabled={!online||!enabled||state.phase==='busy'||!!state.conflicts.length} onClick={()=>void engine.current?.run()}>立即同步</button><button className="text-btn" disabled={state.phase==='busy'} onClick={async()=>{engine.current?.stop();const {error}=await client.auth.signOut();if(error)notify({...initial,phase:'error',message:error.message})}}>登出</button></div><p>啟用後會自動同步修改；頁面開住時約每 15 秒查看其他成員更新。離線、關閉網站或瀏覽器暫停背景頁面時，唔會即時同步。</p></>}
+ <p role="status" className="cloud-message">{status}</p>{state.last&&<small>最近成功同步：{new Date(state.last).toLocaleString('zh-HK')}</small>}
+ {!!state.conflicts.length&&<div className="sync-confirm"><h3>選擇要保留嘅修改</h3><p>兩個版本已保留作本機復原備份。處理期間如有新修改，會重新核對。</p><button className="secondary" onClick={()=>download('qmi-yumi-conflict-backup.json',engine.current?.pending)}>匯出雙方衝突備份</button>{state.conflicts.map(c=><fieldset key={c.path}><legend>{c.label}</legend><label className="check-row"><input type="radio" name={c.path} checked={choices[c.path]==='local'} onChange={()=>setChoices({...choices,[c.path]:'local'})}/>保留本機</label><pre className="sync-value">{describe(c.local)}</pre><label className="check-row"><input type="radio" name={c.path} checked={choices[c.path]==='remote'} onChange={()=>setChoices({...choices,[c.path]:'remote'})}/>保留雲端</label><pre className="sync-value">{describe(c.remote)}</pre></fieldset>)}<button className="primary" disabled={state.conflicts.some(c=>!choices[c.path])} onClick={async()=>{await engine.current?.resolve(choices);setChoices({});void engine.current?.run()}}>確認選擇並重新同步</button></div>}
+ <details><summary>本機復原備份及連線資料</summary><p>自動合併及處理衝突前會保留 JSON 快照；唔包含附件原檔。可匯出後喺「備份與匯出」還原。</p><button className="secondary" onClick={async()=>{try{const rows=await recoveries();if(!rows.length){notify({...initial,message:'呢部裝置暫時冇復原快照'});return}download('qmi-yumi-recovery-snapshots.json',rows)}catch{notify({...initial,phase:'error',message:'未能讀取本機復原快照'})}}}>匯出所有復原快照</button><button className="secondary" onClick={async()=>{const rows=await recoveries();if(rows.length)download('qmi-yumi-latest-recovery.json',rows.sort((a,b)=>b.at.localeCompare(a.at))[0].data)}}>匯出最近一次可還原備份</button><p>Project：{defaultConfig.url} · 公開連線 key 唔等於資料權限。</p></details>
+ </section>;
+}

@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const code=ts.transpileModule(await readFile('app/model.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {demo,validData,days,dateAt}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+assert.ok(validData(demo()));
+const x=demo();x.trips[0].start='2026-12-31';x.trips[0].end='2027-01-02';assert.equal(days(x.trips[0]),3);assert.equal(dateAt(x.trips[0],3),'2027-01-02');
+assert.ok(validData({version:1,trips:[]}));
+const invalidDate=demo();invalidDate.trips[0].start='2026-02-30';assert.ok(!validData(invalidDate));
+const invalidRating=demo();invalidRating.trips[0].stops[0].rating.QMI=11;assert.ok(!validData(invalidRating));
+const missing=demo();delete missing.trips[0].stops[0].place;assert.ok(!validData(missing));
+const badDay=demo();badDay.trips[0].stops[0].day=6;assert.ok(!validData(badDay));
+const expense=demo();expense.trips[0].expenses.push({id:'x',title:'test',amount:2000,currency:'JPY',rate:0.05,payer:'QMI',people:['QMI','YUMI'],status:'已付',category:'美食',date:'2026-11-20'});assert.ok(validData(expense));expense.trips[0].expenses[0].people=[];assert.ok(!validData(expense));
+console.log('PASS: demo, cross-year dates, empty backups, invalid dates, ratings, missing fields, day bounds and expense participant validation.');

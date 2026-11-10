@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const url=async(file,replacements={})=>{let src=ts.transpileModule(await readFile(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;for(const [a,b]of Object.entries(replacements))src=src.replaceAll(a,b);return 'data:text/javascript;base64,'+Buffer.from(src).toString('base64')};
+const mergeURL=await url('app/sync-merge.ts');const {mergeData,same,emptyData}=await import(mergeURL);const {SyncEngine}=await import(await url('app/sync-engine.ts',{'./sync-merge':mergeURL}));const {demo,validData}=await import(await url('app/model.ts'));
+const clone=structuredClone;const base=demo();const local=clone(base),remote=clone(base);local.trips[0].name='Local';remote.trips[0].destination='Remote';
+let result=mergeData(base,local,remote);assert.equal(result.conflicts.length,0);assert.equal(result.data.trips[0].name,'Local');assert.equal(result.data.trips[0].destination,'Remote');
+const both=clone(base);both.trips[0].name='Other';result=mergeData(base,local,both);assert.equal(result.conflicts.length,1);assert.equal(mergeData(base,local,both,{[result.conflicts[0].path]:'remote'}).data.trips[0].name,'Other');
+const deleted=clone(base);deleted.trips=[];assert.equal(mergeData(base,deleted,local).conflicts.length,1,'delete vs edit conflicts');
+const added=clone(base);added.trips.push({...clone(base.trips[0]),id:'second'});assert.equal(mergeData(base,deleted,added).data.trips.length,1);
+assert.ok(same(mergeData(emptyData(),base,emptyData()).data,base));assert.equal(mergeData(base,base,emptyData()).data.trips.length,0);
+let cloud={data:clone(base),version:1};let fail=false,hook=async()=>{};
+function device(initial=base){let draft=clone(initial),state,backups=[];const io={get:()=>draft,apply:d=>draft=d,read:async()=>{if(fail)throw Error('offline');return clone(cloud)},write:async(v,d)=>{await hook();if(v!==cloud.version)throw Error('stale');cloud={data:clone(d),version:v+1};return cloud.version},attachments:async d=>d,persist:async()=>{},checkpoint:async(d)=>backups.push(clone(d)),valid:validData,notify:s=>state=s};const engine=new SyncEngine(io,{data:clone(base),version:1});return {engine,edit:f=>f(draft),get:()=>draft,state:()=>state,backups}}
+const a=device(),b=device();a.edit(d=>d.trips[0].name='A');b.edit(d=>d.trips[0].destination='B');await a.engine.run();await b.engine.run();await a.engine.run();assert.ok(same(a.get(),b.get()));assert.equal(cloud.data.trips[0].name,'A');assert.equal(cloud.data.trips[0].destination,'B');
+a.edit(d=>d.trips[0].name='A2');b.edit(d=>d.trips[0].name='B2');await a.engine.run();await b.engine.run();assert.equal(b.state().phase,'conflict');assert.equal(b.get().trips[0].name,'B2');assert.equal(cloud.data.trips[0].name,'A2');await b.engine.resolve(Object.fromEntries(b.state().conflicts.map(c=>[c.path,'local'])));await b.engine.run();assert.equal(cloud.data.trips[0].name,'B2');
+cloud={data:clone(base),version:1};const c=device();c.edit(d=>d.trips[0].name='before');hook=async()=>c.edit(d=>d.trips[0].name='during');await c.engine.run();assert.equal(c.get().trips[0].name,'during');assert.equal(cloud.data.trips[0].name,'before');hook=async()=>{};await c.engine.run();assert.equal(cloud.data.trips[0].name,'during');
+fail=true;c.edit(d=>d.trips[0].name='offline edit');await c.engine.run();assert.equal(c.state().phase,'error');assert.equal(c.get().trips[0].name,'offline edit');fail=false;await c.engine.run();assert.equal(cloud.data.trips[0].name,'offline edit');
+cloud={data:clone(base),version:1};const d=device();d.edit(x=>x.trips[0].name='retry');hook=async()=>{cloud.version++;hook=async()=>{}};await d.engine.run();assert.equal(d.state().phase,'error');await d.engine.run();assert.equal(cloud.data.trips[0].name,'retry');
+d.engine.stop();d.edit(x=>x.trips[0].name='signed out');await d.engine.run();assert.equal(cloud.data.trips[0].name,'retry');
+console.log('PASS: field merge, add/delete, conflict choices, two clients, in-flight edits, offline retry, optimistic locking and stopped sessions.');

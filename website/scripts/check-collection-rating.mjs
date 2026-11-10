@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const code=ts.transpileModule(await readFile('app/collection-rating.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;
+const {collectionRating,collectionAverage,collectionGrade,collectionStars}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
+const s={kind:'美食',rating:{QMI:null,YUMI:null},metrics:{QMI性價比:3,QMI味道:6,QMI外觀:7,QMI份量:9}};
+assert.equal(collectionRating(s,'QMI').score,6.25);assert.equal(collectionGrade(6.25),'B');assert.equal(collectionStars(6.25),3);assert.equal(collectionAverage(s),6.25);assert.equal(collectionRating(s,'YUMI').score,null);
+s.metrics.YUMI味道=10;assert.equal(collectionAverage(s),8.125);
+s.rating.QMI=10;assert.equal(collectionRating(s,'QMI').score,6.25);
+s.metrics={QMI味道:0,QMI外觀:null};assert.equal(collectionRating(s,'QMI').score,0);assert.equal(collectionStars(0),0);
+s.metrics={};assert.equal(collectionRating(s,'QMI').score,10);assert.equal(collectionRating(s,'QMI').automatic,false);
+s.rating.QMI=null;assert.equal(collectionAverage(s),null);
+s.kind='酒店';s.metrics={QMI味道:10,QMI舒適度:8};assert.equal(collectionRating(s,'QMI').score,8);
+assert.deepEqual([0,4,6,8,9,10].map(collectionGrade),['D','C','B','A','S','S']);
+console.log('PASS: existing detailed scores, independent people, missing vs zero, manual fallback, category metrics, grades, stars and ranking average.');

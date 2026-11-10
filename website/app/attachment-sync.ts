@@ -7,7 +7,7 @@ export async function fileDigest(blob:Blob){return Array.from(new Uint8Array(awa
 export async function syncAttachments(data:Data,client:SupabaseClient,readLocal:(id:string)=>Promise<Blob|undefined>,progress:(s:string)=>void):Promise<Data>{
  const snapshot=structuredClone(data);
  const bucket=client.storage.from(ATTACHMENT_BUCKET);
- const items=snapshot.trips.flatMap(t=>t.attachments||[]);
+ const items=[...snapshot.trips.flatMap(t=>t.attachments||[]),...(snapshot.photos||[])];
  const verified=new Set<string>();
  async function exists(path:string){
   if(!/^attachments\/[a-f0-9]{64}$/.test(path))throw Error('附件雲端路徑格式無效');

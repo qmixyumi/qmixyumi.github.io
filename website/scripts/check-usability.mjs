@@ -1,0 +1,21 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import ts from 'typescript';
+const moduleURL=code=>'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64');
+const load=async path=>import(moduleURL(await readFile(path,'utf8')));
+const {demo,validData}=await load('app/model.ts');const {alive,visibleTrip,markDeleted,trashRows,localDate,todayDay}=await load('app/travel-tools.ts');const {mergeData}=await load('app/sync-merge.ts');
+const d=demo(),id=d.trips[0].id;d.trips[0].expenses=[{id:'e',title:'Lunch',amount:200,currency:'HKD',rate:1,payer:'QMI',people:['QMI'],status:'已付',category:'美食',date:'2026-11-20'}];d.trips[0].notes=[{id:'n',date:'2026-11-20',text:'Memory'}];d.trips[0].tickets=[{id:'t',type:'train',from:'A',to:'B',departure:'2026-11-20T10:00',arrival:'',departureZone:'',arrivalZone:'',number:'1',boarding:'',seat:'',cabin:'',currency:'HKD',fare:null,note:''}];
+for(const kind of ['stops','expenses','notes','tickets','checks']){const x=d.trips[0][kind][0],count=d.trips[0][kind].length;markDeleted(d,kind,id,x.id,true);assert.equal(visibleTrip(d.trips[0])[kind].length,count-1);assert.ok(trashRows(d).some(r=>r.id===x.id));assert.ok(validData(d));markDeleted(d,kind,id,x.id,false);assert.equal(visibleTrip(d.trips[0])[kind].length,count)}
+const base=structuredClone(d),removed=structuredClone(d),edited=structuredClone(d);markDeleted(removed,'stops',id,removed.trips[0].stops[0].id,true);edited.trips[0].stops[0].title='Other edit';assert.equal(mergeData(base,removed,edited).conflicts.length,1,'delete versus edit needs a choice');assert.equal(visibleTrip(mergeData(base,removed,base).data.trips[0]).stops.length,4);
+markDeleted(d,'trips',id,id,true);assert.equal(alive(d.trips).length,0);assert.equal(trashRows(d).length,1);assert.ok(validData(d));markDeleted(d,'trips',id,id,false);assert.equal(alive(d.trips).length,1);
+const instant=new Date('2026-11-20T00:30:00Z');assert.equal(localDate('America/Los_Angeles',instant),'2026-11-19');assert.equal(localDate('Asia/Tokyo',instant),'2026-11-20');assert.equal(todayDay(d.trips[0],'2026-11-22'),3);assert.equal(todayDay(d.trips[0],'2026-11-01'),1);assert.equal(todayDay(d.trips[0],'2026-12-01'),5);
+d.trips[0].timezone='not/a-zone';assert.equal(validData(d),false);delete d.trips[0].timezone;
+let source=(await readFile('app/photos.tsx','utf8')).split('export default function Photo')[0].replace(/^import .*$/gm,'').replace(/^export const PhotoContext=.*$/gm,'');
+source=`export const blobs=new Map();let fail=false;export const setFailure=v=>fail=v;const readLocalFile=async id=>blobs.get(id);const storeBlob=async(id,blob)=>{if(fail)throw Error('storage full');blobs.set(id,blob)};const fileDigest=async blob=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await blob.arrayBuffer())),b=>b.toString(16).padStart(2,'0')).join('');\n`+source;
+const {migratePhotos,hasInlinePhotos,blobs,setFailure}=await import(moduleURL(source));
+const original=demo();original.trips[0].stops[0].photo='data:image/png;base64,aGVsbG8=';original.trips[0].notes=[{id:'photo-note',date:'2026-11-20',text:'photo',photo:original.trips[0].stops[0].photo}];
+const migrated=await migratePhotos(original);assert.ok(hasInlinePhotos(original));assert.equal(hasInlinePhotos(migrated),false);assert.equal(migrated.photos.length,1);assert.equal(blobs.size,1);assert.ok(validData(migrated));assert.ok(migrated.trips[0].stops[0].photo.startsWith('photo:'));assert.equal(await blobs.values().next().value.text(),'hello');assert.deepEqual(await migratePhotos(migrated),migrated);assert.equal(original.photos,undefined,'migration must not mutate original');
+setFailure(true);await assert.rejects(migratePhotos(original),/storage full/);assert.ok(hasInlinePhotos(original));setFailure(false);
+const missing=structuredClone(migrated);missing.photos=[];assert.equal(validData(missing),false);
+const prose=demo();prose.trips[0].stops[0].note='data:image/ mentioned in prose';assert.equal(hasInlinePhotos(prose),false);
+console.log('PASS: recoverable deletion for all six record types, delete/edit conflict, timezone boundaries, deterministic photo migration, deduplication, failure preservation and reference validation.');

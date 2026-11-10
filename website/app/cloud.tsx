@@ -8,7 +8,7 @@ import {SyncEngine,type SyncState} from './sync-engine';
 import {readBase,writeBase,checkpoint,recoveries} from './sync-store';
 import {emptyData,same,type Choices} from './sync-merge';
 export type CloudAuthStatus='checking'|'signed-in'|'signed-out'|'error';
-const initial:SyncState={phase:'idle',message:'登入後可啟用自動同步',conflicts:[]};
+const initial:SyncState={phase:'idle',message:'登入後自動同步（曾手動暫停除外）',conflicts:[]};
 function download(name:string,value:unknown){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function describe(v:unknown){if(v===undefined)return '已移除／未設定';if(typeof v==='string'&&v.startsWith('data:image'))return '照片內容（可先匯出衝突備份）';const text=typeof v==='string'?v:JSON.stringify(v);return text.length>600?text.slice(0,600)+'…':text}
 export default function Cloud({data,ready,active,onLoad,onAuthStatus,onSyncStatus}:{data:Data;ready:boolean;active:boolean;onLoad:(d:Data)=>void;onAuthStatus:(s:CloudAuthStatus)=>void;onSyncStatus:(s:string)=>void}){
@@ -17,15 +17,16 @@ export default function Cloud({data,ready,active,onLoad,onAuthStatus,onSyncStatu
  const engine=useRef<SyncEngine|null>(null),userRef=useRef(''),sessionKey=useRef(''),generation=useRef(0);
  function notify(s:SyncState){setState(prev=>({...s,last:s.last||prev.last}));latest.current.onSyncStatus(s.message)}
  useEffect(()=>{const up=()=>setOnline(true),down=()=>setOnline(false);window.addEventListener('online',up);window.addEventListener('offline',down);let alive=true;
- const apply=(session:{user:{id:string;email?:string}}|null)=>{if(!alive)return;const id=session?.user.id||'';latest.current.onAuthStatus(id?'signed-in':'signed-out');if(userRef.current!==id){engine.current?.stop();engine.current=null;generation.current++;userRef.current=id;setChoices({});setState(initial);setUser(session?{id,email:session.user.email||id}:null);let opt=false;try{opt=!!id&&localStorage.getItem('adventure-auto-sync:'+id)==='on'}catch{}setEnabled(opt)}};
+ const apply=(session:{user:{id:string;email?:string}}|null)=>{if(!alive)return;const id=session?.user.id||'';latest.current.onAuthStatus(id?'signed-in':'signed-out');if(userRef.current!==id){engine.current?.stop();engine.current=null;generation.current++;userRef.current=id;setChoices({});setState(initial);setUser(session?{id,email:session.user.email||id}:null);let opt=false;try{opt=!!id&&localStorage.getItem('adventure-auto-sync:'+id)!=='off'}catch{}setEnabled(opt)}};
  const sub=client.auth.onAuthStateChange((_event,session)=>apply(session));client.auth.getSession().then(({data,error})=>{if(!alive)return;if(error){latest.current.onAuthStatus('error');notify({...initial,phase:'error',message:'未能確認登入，請重試'})}else apply(data.session)}).catch(()=>{if(alive){latest.current.onAuthStatus('error');notify({...initial,phase:'error',message:'未能確認登入，請重新載入網站'})}});
  return()=>{alive=false;engine.current?.stop();sub.data.subscription.unsubscribe();window.removeEventListener('online',up);window.removeEventListener('offline',down)};
  },[client]);
  useEffect(()=>{if(!ready||!user||!enabled){engine.current?.stop();engine.current=null;return}let alive=true;const epoch=++generation.current;
  (async()=>{try{let tabId=sessionStorage.getItem('adventure-sync-tab');if(!tabId){tabId=crypto.randomUUID();sessionStorage.setItem('adventure-sync-tab',tabId)}const key=defaultConfig.url+'|'+user.id+'|'+tabId;sessionKey.current=key;const base=await readBase(key);if(!alive||epoch!==generation.current)return;if(base&&!validData(base.data))throw Error('同步基準格式不相容，請先匯出備份。');
+ let cached=base;
  const current=new SyncEngine({get:()=>latest.current.data,apply:d=>{if(same(d,latest.current.data))return;latest.current.data=d;latest.current.onLoad(d)},
- read:async()=>{const {data:row,error}=await client.from('adventure_state').select('payload,version').eq('id','qmi-yumi').abortSignal(AbortSignal.timeout(20000)).single();if(error)throw Error('未能讀取私人雲端：'+error.message);return {data:row.payload===null?emptyData():row.payload,version:row.version}},
- write:async(version,payload)=>{const {data:next,error}=await client.rpc('save_adventure',{expected_version:version,new_payload:payload}).abortSignal(AbortSignal.timeout(20000));if(error)throw Error('本機修改已保留，稍後會重新核對：'+error.message);return next as number},
+ read:async()=>{const meta=await client.from('adventure_state').select('version').eq('id','qmi-yumi').abortSignal(AbortSignal.timeout(20000)).single();if(meta.error)throw Error('未能核對雲端版本：'+meta.error.message);if(cached&&cached.version===meta.data.version)return structuredClone(cached);const {data:row,error}=await client.from('adventure_state').select('payload,version').eq('id','qmi-yumi').abortSignal(AbortSignal.timeout(20000)).single();if(error)throw Error('未能讀取私人雲端：'+error.message);cached={data:row.payload===null?emptyData():row.payload,version:row.version};return structuredClone(cached)},
+ write:async(version,payload)=>{const {data:next,error}=await client.rpc('save_adventure',{expected_version:version,new_payload:payload}).abortSignal(AbortSignal.timeout(20000));if(error)throw Error('本機修改已保留，稍後會重新核對：'+error.message);cached={data:structuredClone(payload),version:next as number};return next as number},
  attachments:d=>syncAttachments(d,client,readLocalFile,message=>notify({phase:'busy',message,conflicts:[]})),persist:b=>writeBase(key,b),checkpoint,valid:validData,notify},base);engine.current=current;await current.run();
  }catch(e){if(alive)notify({phase:'error',message:e instanceof Error?e.message:'未能啟動同步',conflicts:[]})}})();
  return()=>{alive=false;generation.current++;engine.current?.stop();engine.current=null};

@@ -12,7 +12,7 @@ export function mergeData(base:Data,local:Data,remote:Data,choices:Choices={}){c
    const ba=(b||[]) as {id:string}[],la=l as {id:string}[],ra=r as {id:string}[];const ids=[...new Set([...ra,...la,...ba].map(x=>x.id))];
    return ids.flatMap(id=>{const bv=ba.find(x=>x.id===id),lv=la.find(x=>x.id===id),rv=ra.find(x=>x.id===id);const item=(lv||rv||bv) as Record<string,unknown>;const name=String(item.name||item.title||item.text||id);const result=visit(bv,lv,rv,path+'/'+encodeURIComponent(id),label+' / '+name);return result===undefined?[]:[result]});
   }
-  if(object(l)&&object(r)&&(b===undefined||object(b))){const result:Record<string,unknown>={};const bo=object(b)?b:{};for(const key of new Set([...Object.keys(bo),...Object.keys(l),...Object.keys(r)])){if(['__proto__','constructor','prototype'].includes(key))continue;const value=visit(bo[key],l[key],r[key],path+'/'+encodeURIComponent(key),label+' / '+key);if(value!==undefined)result[key]=value}return result}
+  if(object(l)&&object(r)&&(b===undefined||object(b))&&same(l.deletedAt,r.deletedAt)){const result:Record<string,unknown>={};const bo=object(b)?b:{};for(const key of new Set([...Object.keys(bo),...Object.keys(l),...Object.keys(r)])){if(['__proto__','constructor','prototype'].includes(key))continue;const value=visit(bo[key],l[key],r[key],path+'/'+encodeURIComponent(key),label+' / '+key);if(value!==undefined)result[key]=value}return result}
   if(choices[path])return structuredClone(choices[path]==='local'?l:r);
   conflicts.push({path,label,local:l,remote:r});return structuredClone(l);
  }

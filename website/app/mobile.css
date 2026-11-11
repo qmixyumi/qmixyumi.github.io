@@ -1,0 +1,96 @@
+/* Mobile layout and wording pass: search pill, demo note, lobby today card, plan switch, bag shortcuts, start choice, backup options */
+
+/* Search is a labelled pill so people remember where it is */
+.app .search-pill{display:inline-flex;align-items:center;gap:8px;border:1px solid #cfd8c0;border-radius:30px;background:#fffef7;color:#536c4b;padding:8px 16px 8px 12px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.app .search-pill:hover{background:#f1f4e6}
+.app .search-short{display:none}
+
+/* Demo trip note */
+.app .demo-note{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 20px;padding:12px 16px;border:1px dashed #c9a24f;border-radius:10px;background:#fff8e6;color:#5a4a26;font-size:13px}
+.app .demo-note .primary{padding:9px 14px}
+
+/* Lobby: today card */
+.app .today-card .section-title{margin-bottom:12px}
+.app .today-next-head{display:flex;gap:12px;align-items:center;margin:4px 0 8px}
+.app .today-next-head h2{font-size:18px}
+.app .today-next-head p{font-size:13px;color:var(--muted)}
+.app .today-next .eyebrow,.app .today-list .eyebrow{margin-bottom:6px}
+.app .today-next .actions{margin-top:14px}
+.app .today-list .compact-stop{padding:10px 0}
+.app .today-budget{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;font-size:13px;font-weight:600}
+
+/* Itinerary: the 行程／地圖 switch is only for phones; details fold under a stop on phones */
+.app .plan-switch{display:none}
+.app .inline-detail{display:none}
+.app .detail-hint{display:none}
+
+/* 旅行背包 shortcuts */
+.app .bag-jump{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}
+.app .bag-jump .secondary{padding:9px 14px;font-size:13px}
+.app .bag-section{scroll-margin-top:90px;margin-bottom:22px}
+.app .bag-section .panel,.app .bag-section>section{margin-bottom:0}
+.app .two-col:has(>.bag-section){margin-bottom:22px}
+.app .two-col>.bag-section{margin-bottom:0}
+
+/* 資料管理 */
+.app .settings h3{font-size:14px;margin:4px 0 4px}
+.app .advanced-opts{margin-top:16px;border-top:1px solid var(--border);padding-top:12px}
+.app .advanced-opts summary{color:#536c4b}
+.app .advanced-opts p{margin:10px 0}
+
+/* New trip: start choice */
+.app .start-choice{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 4px}
+.app .start-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1.5px solid #cbd4bd;border-radius:12px;background:#f9faf0;padding:18px;cursor:pointer}
+.app .start-choice button:hover{border-color:#6f8a53;background:#f1f5e6}
+.app .start-choice span{font-size:26px}
+.app .start-choice b{font-size:16px}
+.app .start-choice small{color:var(--muted);font-size:13px;line-height:1.6}
+.app .start-switch{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.app .import-grid.single{grid-template-columns:1fr}
+.app .file-basics{margin-top:18px}
+.app .file-basics h3{margin-bottom:4px}
+
+@media(max-width:620px){
+ /* Keep text on the new-trip button */
+ .app .page-heading>.primary.new-trip-btn{font-size:14px;padding:9px 12px;flex-shrink:0}
+ .app .search-pill{padding:7px 11px 7px 9px;font-size:14px}
+ .app .search-long{display:none}
+ .app .search-short{display:inline}
+ .app .breadcrumb{display:none}
+ .app .topbar .top-right{margin-left:auto}
+ .app .account-chip small{white-space:nowrap}
+
+ /* During a trip, today's plan goes to the very top of the lobby */
+ .app main.lobby-live{display:flex;flex-direction:column}
+ .app main.lobby-live>.today-card{order:-1;margin-top:0}
+ .app .today-card{padding:14px}
+ .app .today-card .two-col{gap:12px}
+ .app .today-card .panel{padding:16px}
+
+ /* Smaller adventure intro card */
+ .app .hero{min-height:0}
+ .app .hero-map{display:none}
+ .app .hero-copy{padding:18px 18px 20px;background:none}
+ .app .hero-copy .pill{margin-bottom:10px}
+ .app .hero-copy h2{font-size:21px;line-height:1.5}
+ .app .hero-copy em{font-size:16px}
+ .app .hero-copy p{margin-top:6px;line-height:1.7}
+ .app .hero-copy .dark-btn{margin-top:12px}
+
+ /* Itinerary: timeline first, 行程／地圖 switch */
+ .app .plan-switch{display:flex;gap:8px;margin:0 0 14px}
+ .app .plan-switch button{flex:1}
+ .app .map-layout.plan-list>.map-col{display:none}
+ .app .map-layout.plan-map>.timeline{display:none}
+ .app .detail-hint{display:block;margin-top:8px;font-size:13px;color:#536c4b;font-weight:600}
+ .app .inline-detail{display:block;margin:8px 0 4px;padding:14px;border:1px solid #d5dcc6;border-radius:8px;background:#fffef7}
+ .app .inline-detail h2{font-size:16px}
+ .app .inline-detail p{font-size:14px;margin:8px 0}
+ .app .timeline-card h3{font-size:15px}
+ .app .timeline-card p{font-size:13px}
+
+ .app .bag-jump{flex-wrap:nowrap;overflow-x:auto;margin:0 -17px 18px;padding:0 17px 4px}
+ .app .bag-jump .secondary{flex-shrink:0}
+ .app .demo-note .primary{width:100%}
+ .app .start-choice{grid-template-columns:1fr}
+}

@@ -29,7 +29,7 @@ export default function SearchPanel({data,onPick}:{data:Data;onPick:(h:SearchHit
  const [q,setQ]=useState('');const hits=useMemo(()=>searchAll(data,q),[data,q]);
  const groups=[...new Set(hits.map(h=>h.group))];
  return <section className="site-search"><h2>全站搜尋</h2>
-  <label className="search-box"><Search size={18}/><input autoFocus type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋旅程、酒店、餐廳、票券、日記、評鑑…" aria-label="全站搜尋"/></label>
+  <label className="search-box"><Search size={18}/><input autoFocus type="search" value={q} onChange={e=>setQ(e.target.value)} placeholder="搜尋景點、票券、日記、餐廳、酒店…" aria-label="全站搜尋"/></label>
   {q.trim()&&!hits.length&&<p className="empty-small">搵唔到「{q}」</p>}
   {groups.map(g=><div key={g} className="search-group"><h3>{g}<small>{hits.filter(h=>h.group===g).length}</small></h3>{hits.filter(h=>h.group===g).map((h,i)=><button key={g+i} className="compact-stop" onClick={()=>onPick(h)}><span><b>{h.title}</b><small>{h.sub}</small></span></button>)}</div>)}
   {!q.trim()&&<p className="muted">可以打地方名、班次號碼、餐廳名、日記入面嘅字。快捷鍵：Ctrl／⌘ + K</p>}

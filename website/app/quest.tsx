@@ -2,7 +2,7 @@
 import Photo from './photos';
 import {useState,useRef,useEffect,CSSProperties,ReactNode} from 'react';
 import {MapPin,Sofa,Leaf,Moon,BadgeDollarSign,Coffee,Star,Eye,Tag,Soup,Flame,Candy,Folder,Pencil,Trash2,Clock,Ticket,LayoutGrid,Trophy,SlidersHorizontal,Plus,Shield,Gem,X,Download,BedDouble,Mountain,UtensilsCrossed} from 'lucide-react';
-import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,personScores,withPersonScore,withPersonReset,personTotal,biggestGap,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor} from './quest-model';
+import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor} from './quest-model';
 import {saveValue,readValue,ago} from './drafts';
 import './quest.css';
 import type {Stop} from './model';
@@ -44,7 +44,7 @@ function Badge({grade,word,small}:{grade:string;word?:string;small?:boolean}){re
 
 async function compressPhoto(file:File){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('請用 10MB 以內嘅 JPG、PNG 或 WebP。');const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');const scale=Math.min(1,800/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let image=canvas.toDataURL('image/jpeg',.75);if(image.length>250000)image=canvas.toDataURL('image/jpeg',.45);if(image.length>250000)throw Error('圖片壓縮後仍太大，請選較細嘅照片。');return image}
 
-export default function Quest({value,onChange,stops=[],tripName='',person='QMI',onPerson,focus=''}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;person?:string;onPerson?:(p:string)=>void;focus?:string}){
+export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;person?:string;onPerson?:(p:string)=>void;focus?:string}){
  const q=value||emptyQuest();
  const [kind,setKind]=useState<QuestKind>('hotel'),[view,setView]=useState('cards'),[folder,setFolder]=useState('all'),[sort,setSort]=useState('new'),[draft,setDraft]=useState<QuestEntry|null>(null),[metrics,setMetrics]=useState<QuestMetric[]|null>(null),[folderForm,setFolderForm]=useState<{id:string;name:string}|null>(null),[notice,setNotice]=useState(''),[exporting,setExporting]=useState(false),[photoBusy,setPhotoBusy]=useState(false),[exports,setExports]=useState<{url:string;name:string}[]>([]),[hotelId,setHotelId]=useState(''),[newHotel,setNewHotel]=useState('');
  useEffect(()=>()=>exports.forEach(f=>URL.revokeObjectURL(f.url)),[exports]);
@@ -65,8 +65,10 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
  const score=(e:QuestEntry)=>questScore(e,kindMetrics);const ranked=[...items].sort((a,b)=>(score(b)??-1)-(score(a)??-1)||b.created-a.created);const cards=sort==='score'?ranked:[...items].sort((a,b)=>b.created-a.created);
  const rated=items.map(score).filter((n):n is number=>n!==null),average=rated.length?rated.reduce((a,b)=>a+b,0)/rated.length:null;
  const activeMetrics=(e:QuestEntry)=>kindMetrics.filter(m=>!(e.kind==='hotel'&&m.id==='breakfast'&&!e.breakfast));
- const mine=(e:QuestEntry)=>personScores(e,person);
- const setScore=(e:QuestEntry,id:string,v:number|null)=>patch(e.id,x=>withPersonScore(x,person,id,v));
+ // Per-person rating is hidden for now: everyone edits one shared score, written to both raters so averages stay equal.
+ const mine=(e:QuestEntry)=>e.scores;
+ const shared=(e:QuestEntry,id:string,v:number|null)=>e.people?RATERS.reduce((x,p)=>withPersonScore(x,p,id,v),e):{...e,scores:{...e.scores,[id]:v}};
+ const setScore=(e:QuestEntry,id:string,v:number|null)=>patch(e.id,x=>shared(x,id,v));
  function erase(e:QuestEntry){if(window.confirm(`刪除「${e.name}」？可用頁面「撤銷」復原。`))commit(n=>{n.entries=n.entries.filter(x=>x.id!==e.id)})}
  function removeFolder(id:string){const selected=folders.find(f=>f.id===id);if(selected&&window.confirm(`移除檔案「${selected.name}」？記錄會保留並移到未分類。`)){commit(n=>{n.folders=n.folders.filter(f=>f.id!==id);n.entries.forEach(e=>{if(e.folder===id)e.folder=''})});if(folder===id)setFolder('all')}}
  const importable=stops.filter(s=>!s.deletedAt&&s.status!=='取消'&&stopKind[s.kind]===kind&&!q.entries.some(e=>e.kind===kind&&(e.name===s.title.slice(0,100)||s.title.includes(e.name))));
@@ -75,7 +77,6 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
  async function photo(file:File){if(!draft)return;const request=++photoRequest.current;const entryId=draft.id;setPhotoBusy(true);try{const image=await compressPhoto(file);if(request===photoRequest.current){edited.current=true;setDraft(d=>d?.id===entryId?{...d,photo:image}:d)}}catch(e){if(request===photoRequest.current)setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{if(request===photoRequest.current)setPhotoBusy(false)}}
  async function hotelPhotoChange(file:File,id:string){setPhotoBusy(true);try{const image=await compressPhoto(file);patch(id,e=>{e.photo=image})}catch(e){setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{setPhotoBusy(false)}}
  async function exportRanking(){setExporting(true);setNotice('');try{const {exportQuestRanking}=await import('./quest-export');const files=await exportQuestRanking({kind,title:theme.title,folder:folder==='all'?'全部':folder==='none'?'未分類':folders.find(f=>f.id===folder)?.name||'',entries:ranked,metrics:kindMetrics,dark:false});setExports(files.map(f=>({url:URL.createObjectURL(f.blob),name:f.name})));setNotice('排行榜 PNG 已準備好，按下面連結下載；每頁最多 20 項。')}catch(e){setNotice(e instanceof Error?e.message:'圖片匯出失敗')}finally{setExporting(false)}}
- const peopleLine=(e:QuestEntry)=>e.people?<p className="q-people">{RATERS.map(p=><span key={p}>{p} <b>{num(personTotal(e,kindMetrics,p))}</b></span>)}{(()=>{const g=biggestGap(e,kindMetrics);return g&&<em>分歧最大：{g.name}（{RATERS[0]} {g.a}／{RATERS[1]} {g.b}）</em>})()}</p>:null;
  const folderName=(id:string)=>folders.find(f=>f.id===id)?.name||'未分類';
 
  // ---------- Shared header ----------
@@ -90,7 +91,6 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
   <div className="q-tabs"><button className={'q-btn'+(view==='cards'?' q-green':'')} onClick={()=>setView('cards')}>{kind==='spot'&&<LayoutGrid/>}{kind==='hotel'?'評分冒險':kind==='spot'?'景點列表':'評分圖鑑'}</button><button className={'q-btn'+(view==='rank'?' q-green':'')} onClick={()=>setView('rank')}>{kind==='spot'&&<Trophy/>}{kind==='hotel'?'排名榜':'排行榜'}</button></div>
   <div className="q-tabs">{stops.length>0&&<button className="q-btn" disabled={!importable.length} onClick={importStops} title="將目前旅程嘅項目加入圖鑑">⇣ 由行程匯入（{importable.length}）</button>}{kind==='food'&&<button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 評分指標</button>}{kind==='hotel'&&<button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 指標設定</button>}</div>
  </div>;
- const personBar=<div className="q-person" role="radiogroup" aria-label="評分身份"><span>評分身份</span>{RATERS.map(p=><button key={p} role="radio" aria-checked={person===p} className={person===p?'on':''} onClick={()=>onPerson?.(p)}>{p}</button>)}<small>拉桿顯示 {person} 嘅分數；綜合分係兩人平均</small></div>;
 
  // ---------- Ranking ----------
  const ranking=<div className="q-ranking">{!items.length?<p className="q-muted">未有記錄。</p>:<>{ranked.map((e,i)=>{const t=score(e),g=questGrade(t);return <button className="q-rank-row" key={e.id} style={{'--g':gradeColors[g]} as CSSProperties} onClick={()=>{if(kind==='hotel'){setHotelId(e.id);setView('cards')}else openDraft(structuredClone(e))}}><b className="q-rank-no">{i+1}</b><Badge grade={g} small/><strong>{e.name}<small>{[folderName(e.folder),kind==='hotel'?e.room:kind==='spot'?e.region:e.category].filter(Boolean).join(' · ')}</small></strong>{kind==='hotel'&&<Stars value={t}/>}<b className="q-num">{num(t)}</b><small className="q-tier">{(kind==='hotel'?hotelWords:tierWords)[g]}</small></button>})}<button className="q-btn q-green q-export" disabled={exporting} onClick={exportRanking}><Download/> {exporting?'正在匯出…':'匯出排行榜 PNG'}</button></>}</div>;
@@ -107,11 +107,11 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
  function foodCard(e:QuestEntry){const t=score(e),g=questGrade(t),level=e.level||'spice',lv=level==='sweet'?e.sweet||'':e.spice;return <article className="q-food-card" id={'quest-'+e.id} key={e.id} style={{'--g':gradeColors[g]} as CSSProperties}>
   <header><div><h3>{e.name}</h3>{e.category&&<span className="q-tag">{e.category}</span>}{(e.region||e.price)&&<p className="q-muted">{[e.region,e.price].filter(Boolean).join(' · ')}</p>}</div><Badge grade={g} word={tierWords[g]}/></header>
   {e.photo&&<Photo className="q-thumb" src={e.photo} alt={e.name+' 照片'}/>}
-  {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={`${e.name} ${m.name}（${person}）`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/><b className="q-num">{num(mine(e)[m.id],0)}</b></div>)}
+  {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/><b className="q-num">{num(mine(e)[m.id],0)}</b></div>)}
   {lv&&<div className="q-level-row"><span className="q-micon">{level==='sweet'?<Candy/>:<Flame/>}</span><span className="q-mname">{level==='sweet'?'甜度':'辣度'}</span><span className="q-mini-tag">級別</span><span className="q-level-chips">{(level==='sweet'?SWEET:SPICE).map(s=><button key={s} className={lv===s?'on':''} onClick={()=>patch(e.id,x=>{if(level==='sweet')x.sweet=lv===s?'':s;else x.spice=lv===s?'':s})}>{s}</button>)}</span></div>}
   <div className="q-total-row"><b>綜合</b><span className="q-gold-bar"><i style={{width:((t??0)*10)+'%'}}/></span><b className="q-num">{num(t===null?null:Math.round(t),0)}</b></div>
   {lv&&<p className="q-caption">綜合評分不含：{level==='sweet'?'甜度':'辣度'}</p>}
-  {peopleLine(e)}
+
   {(e.notes||e.review)&&<p className="q-note">{[e.notes,e.review].filter(Boolean).join('\n')}</p>}
   <footer><button className="q-btn q-blue" onClick={()=>openDraft(structuredClone(e))}><Pencil/> 編輯</button><button className="q-btn q-red" onClick={()=>erase(e)}><Trash2/> 刪除</button></footer>
  </article>}
@@ -127,8 +127,8 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
   {e.ride&&<p className="q-line"><Ticket/><span className="q-mini-label">項目</span>{e.ride}</p>}
   {e.duration&&<p className="q-line"><Clock/><span className="q-mini-label">時長</span>{e.duration}</p>}
   {e.photo&&<Photo className="q-thumb" src={e.photo} alt={e.name+' 照片'}/>}
-  <div className="q-seg-list">{kindMetrics.map(m=><div className="q-seg-metric" key={m.id}><div><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><b className="q-num">{num(mine(e)[m.id],0)}/10</b></div><Segments label={`${e.name} ${m.name}（${person}）`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/></div>)}</div>
-  {peopleLine(e)}
+  <div className="q-seg-list">{kindMetrics.map(m=><div className="q-seg-metric" key={m.id}><div><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><b className="q-num">{num(mine(e)[m.id],0)}/10</b></div><Segments label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/></div>)}</div>
+
   {(e.notes||e.review)&&<details className="q-more"><summary>備註</summary><p>{[e.review,e.notes].filter(Boolean).join('\n')}</p></details>}
  </article>}
  const spotGroups=[...folders.map(f=>({id:f.id,name:f.name,list:all.filter(e=>e.folder===f.id)})),{id:'',name:'未分類',list:all.filter(e=>!e.folder)}].filter(g=>g.id||g.list.length);
@@ -157,11 +157,11 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
   <section className="q-panel q-hotel-stats">
    <h3 className="q-panel-title">能力值評分 <span>STAT SCORES</span></h3><p className="q-muted">{kindMetrics.filter(m=>m.id!=='breakfast').length} 項必評；早餐選填，關閉後不計入綜合分</p>
    <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="改酒店名稱" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
-   <button className="q-btn" onClick={()=>{if(window.confirm(`重置 ${person} 對「${hotel.name}」嘅評分？`))patch(hotel.id,e=>withPersonReset(e,person))}}>重置分數</button>
+   <button className="q-btn" onClick={()=>{if(window.confirm(`重置「${hotel.name}」嘅評分？`))patch(hotel.id,e=>{const r=e.people?RATERS.reduce((x,p)=>withPersonReset(x,p),e):e;r.scores={};return r})}}>重置分數</button>
    <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div>
-   {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}（${person}）`} color={off?'#e8d6a0':'#3cb85c'} rest={off?'#f6ecd0':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
+   {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?'#e8d6a0':'#3cb85c'} rest={off?'#f6ecd0':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
    <p className="q-caption">綜合 <b className="q-green-text">{num(t)}</b> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
-   {peopleLine(hotel)}
+ 
   </section>
   <section className="q-panel q-hotel-side">
    <div className="q-panel-head"><h3 className="q-panel-title">酒店早餐 <span>BREAKFAST</span></h3><button className="q-dash-tag" onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}>{hotel.breakfast?'使用中 · 計分':'未使用 · 不計分'}</button></div>
@@ -181,14 +181,14 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
  const isNew=!!draft&&!q.entries.some(e=>e.id===draft.id);
  function save(e:React.FormEvent){e.preventDefault();if(!draft||photoBusy)return;const entry={...draft,name:draft.name.trim()};if(!entry.name)return;commit(n=>{const i=n.entries.findIndex(x=>x.id===entry.id);if(i<0)n.entries.push(entry);else n.entries[i]=entry});close(true)}
  const set=(p:Partial<QuestEntry>)=>{edited.current=true;setDraft(d=>d?{...d,...p}:d)};
- const setDraftScore=(id:string,v:number|null)=>{edited.current=true;setDraft(d=>d?withPersonScore(d,person,id,v):d)};
+ const setDraftScore=(id:string,v:number|null)=>{edited.current=true;setDraft(d=>d?shared(d,id,v):d)};
  function foodForm(d:QuestEntry){const level=d.level||'spice';return <form onSubmit={save} className="q-form">
   <h2 className="q-form-title">{isNew?'新增美食':'編輯美食'}</h2>
   <label>名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：炒粿條"/></label>
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
   <label>分檔<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
-  <div className="q-field"><span>評分（0 – 10）· 以 {person} 身份</span>
+  <div className="q-field"><span>評分（0 – 10）</span>
    {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={m.name} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id],0)}</b></div>)}
    <div className="q-level-row"><span className="q-micon q-purple"><Star/></span><span className="q-mname">級別</span><span className="q-mini-tag">級別</span><span className="q-seg-toggle"><button type="button" className={level==='spice'?'on':''} onClick={()=>set({level:'spice'})}>辣度</button><button type="button" className={level==='sweet'?'on':''} onClick={()=>set({level:'sweet'})}>甜度</button></span></div>
    <div className="q-level-row"><span className="q-micon q-pink">{level==='sweet'?<Candy/>:<Flame/>}</span><span className="q-mname">{level==='sweet'?'甜度':'辣度'}</span><span className="q-mini-tag">級別</span><span className="q-level-chips">{(level==='sweet'?SWEET:SPICE).map(s=>{const cur=level==='sweet'?d.sweet||'':d.spice;return <button type="button" key={s} className={cur===s?'on':''} onClick={()=>set(level==='sweet'?{sweet:cur===s?'':s}:{spice:cur===s?'':s})}>{s}</button>})}</span></div>
@@ -208,7 +208,7 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
   <label>游玩項目門票（可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：HK$150（纜車、園區設施等）"/></label>
   <label>建議游玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
   <hr className="q-dash"/>
-  {kindMetrics.map(m=><div className="q-field q-seg-field" key={m.id}><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><Segments label={`${m.name}（${person}）`} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id]??0,0)}/10</b></div>)}
+  {kindMetrics.map(m=><div className="q-field q-seg-field" key={m.id}><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><Segments label={`${m.name}`} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id]??0,0)}/10</b></div>)}
   <label>備註（可選填）<textarea maxLength={3000} value={d.notes} onChange={e=>set({notes:e.target.value})} placeholder="交通、注意事項、拍攝位……"/></label>
   {d.review&&<label>感想<textarea maxLength={3000} value={d.review} onChange={e=>set({review:e.target.value})}/></label>}
   <div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green" disabled={photoBusy}>儲存</button></div>
@@ -220,7 +220,6 @@ export default function Quest({value,onChange,stops=[],tripName='',person='QMI',
   {header}
   {kind==='hotel'&&<div className="q-stripe" aria-hidden="true"/>}
   {tabs}
-  {personBar}
   {saved&&!draft&&<div className="q-notice q-draft-offer"><span>有一份 {ago(saved.at)} 未儲存嘅評鑑草稿「{saved.value.name||'未命名'}」</span><button className="q-btn q-green" onClick={()=>{const d=saved.value;setKind(d.kind);edited.current=true;setDraft(d);setSaved(null)}}>繼續編輯</button><button className="q-btn" onClick={()=>{saveValue(DRAFT,null);setSaved(null)}}>捨棄</button></div>}
   {view==='rank'?<>{kind!=='spot'&&kind!=='hotel'&&folderChips}{ranking}</>:kind==='hotel'?hotelView():kind==='food'?foodView:spotView}
   {notice&&<p role="status" className="q-notice">{notice}</p>}

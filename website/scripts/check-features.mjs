@@ -54,4 +54,6 @@ e=quest.withPersonScore(e,'YUMI','value',2);assert.equal(e.scores.value,4);
 const gap=quest.biggestGap(e,metrics);assert.equal(gap.name,'性價比');assert.equal(quest.personTotal(e,metrics,'QMI'),(10+6+6+6)/4);
 e=quest.withPersonScore(quest.withPersonScore(e,'QMI','portion',null),'YUMI','portion',null);assert.equal(e.scores.portion,null);
 const q=quest.emptyQuest();q.entries.push(e);const qd=demo();qd.quest=q;assert.ok(validData(qd));q.entries[0].people.QMI.taste=11;assert.equal(validData(qd),false);
+{const q2=quest.emptyQuest();const f={...quest.newQuestEntry('food'),name:'糖水',level:'sweet',sweet:'微甜',scores:{taste:8,appearance:8,value:8,portion:8}};q2.entries.push(f);const d2=demo();d2.quest=q2;assert.ok(validData(d2));assert.equal(quest.questScore(f,q2.metrics.food),8);f.level='bitter';assert.equal(validData(d2),false);f.level='spice';f.sweet=3;assert.equal(validData(d2),false);
+assert.equal(quest.metricColor({id:'view',name:'x',color:'#e9ad27',reverse:false}),'#d9473c');assert.equal(quest.metricColor({id:'view',name:'x',color:'#123456',reverse:false}),'#123456');}
 console.log('PASS: time zone suggestions, split by amount/percent, repayments, shot lists, time clash and overnight warnings, ZIP round trip and per-person quest scores.');

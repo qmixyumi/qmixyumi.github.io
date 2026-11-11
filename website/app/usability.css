@@ -12,3 +12,6 @@
 .timeline-item[draggable=true]{cursor:grab}.timeline-item.dragging{opacity:.45}
 .import-summary{font-weight:600;color:var(--green);margin:12px 0 4px}
 @media(max-width:620px){.real-map-canvas{height:340px}.bar-row{grid-template-columns:72px minmax(0,1fr);}.bar-row b{grid-column:2;font-size:13px}.day-export{margin-left:0}}
+
+.close-guard{position:sticky;top:0;z-index:5;margin:0 0 14px;padding:12px 14px;border:1.5px solid #c9853a;border-radius:12px;background:#fff4dc;color:#4a3210}.close-guard p{margin:0 0 10px;font-weight:700}.close-guard .actions{display:flex;gap:10px;flex-wrap:wrap}
+.ticket-preview{margin:12px 0;padding:12px 14px;border:1px dashed #9fb39a;border-radius:12px;background:#f4f8ec}.ticket-preview p{margin:6px 0 0;font-size:.92rem;overflow-wrap:anywhere}

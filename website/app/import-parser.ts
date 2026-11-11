@@ -8,7 +8,7 @@ function parsePlainItinerary(text:string,source:string):ImportRow[]{
  const dt=line.match(/^(20\d{2})\s*[-/年]\s*(\d{1,2})\s*[-/月]\s*(\d{1,2})日?/);
  if(dt&&!/來源|查證|查证/.test(line)){const candidate=dateValue(dt[1],dt[2],dt[3]);if(candidate){date=candidate;day='';line=line.slice(dt[0].length).replace(/^[\s|,\t:]+/,'');if(!line||/^[（(]?(星期|週|周)/.test(line))continue}}
  const prefix=line.match(/^((?:[01]?\d|2[0-3])[:時][0-5]\d(?:分)?(?:\s*[–—~～→\/／或-]\s*(?:[01]?\d|2[0-3])[:時][0-5]\d(?:分)?)?(?:\s*[前後后])?)/);
- const period=line.match(/^(上午|下午|中午|晚上|夜晚)\s*/);
+ const period=line.match(/^(凌晨|清晨|早上|早晨|上午|中午|午後|午后|下午|傍晚|黃昏|黄昏|晚上|夜晚|晚間|晚间|深夜)\s*/);
  const timeCell=prefix?.[0]||period?.[0]||'';
  const timing=parseTime(timeCell);
  const titleText=line.slice(timeCell.length).replace(/^[\s|,\t:→~–—-]+|[\s|,\t:→~–—-]+$/g,'').trim();if(!titleText)continue;
@@ -35,11 +35,44 @@ export function itineraryMetadata(text:string):{destination:string;choices:DateC
 }
 export function ticketKind(title:string):TicketKind|''{if(/航班|機場|机场|飛機|飞机|飛往|飞往|起飛|起飞|登機|登机|航空|flight|airport|airlines?|\b(?:CX|UO|HX|JL|NH|MM|TR|KE|OZ|CI|BR|SQ|TG|AK|FD|VJ|MU|CA|CZ|HO|9C|ZH|7C|LJ|TW|IT|GK|BX)\s?\d{2,4}\b/i.test(title))return 'flight';if(/高鐵|高铁|新幹線|新干线|shinkansen|HSR|KTX|動車|动车|G\d{2,4}\b/i.test(title))return 'high-speed';if(/火車|火车|列車|列车|鐵路|铁路|\bJR\b|\btrain\b|\brail(?:way)?\b|特急|急行|Express/i.test(title))return 'train';return ''}
 export function flightNumber(title:string){return title.match(/\b([A-Z][A-Z0-9]|[0-9][A-Z])\s?(\d{2,4})\b/)?.slice(1).join('')||''}
-export function classify(title:string){if(ticketKind(title))return '交通';return /高鐵|高铁|出發|出发|的士|地鐵|地铁|車站|南站|西九龍|西九龙|航班|機場|机场|列車|列车|火車|火车|flight|\btrain\b|station|京都站|新幹線|交通/i.test(title)?'交通':/退房|酒店|住宿|飯店|旅宿|hotel|check.?in/i.test(title)?'酒店':/餐|宵夜|小食|拉麵|拉面|壽司|寿司|燒肉|烧肉|居酒屋|咖啡|café|cafe|甜品|茶室|食堂|restaurant|lunch|dinner|breakfast|brunch|ramen|sushi|bar\b/i.test(title)?'美食':/步行街|逛|夜市|購物|购物|shopping/i.test(title)?'購物':/演唱會|演出|表演|音樂會|展覽|体验|體驗|工作坊|tour|show|concert/i.test(title)?'活動':'景點'}
+export function classify(title:string){if(ticketKind(title))return '交通';
+ const head=title.replace(/[（(][\s\S]*$/,'').trim()||title;
+ if(/^(?:早餐|午餐|晚餐|宵夜|下午茶|brunch|lunch|dinner|breakfast)/i.test(head))return '美食';
+ if(/入住|退房|check.?in|check.?out/i.test(head))return '酒店';
+ if(/休息|起床|自由活動|自由活动|自由時間|自由时间/.test(head)&&!/[逛餐]/.test(head))return '日常';
+ if(/逛|步行街|夜市|購物|购物|shopping/i.test(head)&&!/^(?:的士|地鐵|地铁|巴士|乘|搭|坐)/.test(head))return '購物';
+ return /高鐵|高铁|出發|出发|的士|地鐵|地铁|車站|南站|西九龍|西九龙|航班|機場|机场|列車|列车|火車|火车|flight|\btrain\b|station|京都站|新幹線|交通|過關|过关/i.test(title)?'交通':/酒店|住宿|飯店|旅宿|hotel/i.test(title)?'酒店':/餐|宵夜|小食|拉麵|拉面|壽司|寿司|燒肉|烧肉|居酒屋|咖啡|café|cafe|甜品|茶室|食堂|restaurant|lunch|dinner|breakfast|brunch|ramen|sushi|bar\b/i.test(title)?'美食':/演唱會|演出|表演|音樂會|展覽|体验|體驗|工作坊|tour|show|concert/i.test(title)?'活動':'景點'}
+export type TicketDetails={from:string;to:string;number:string;arrival:string;minutes:number;seat:string;cabin:string;gate:string;fare:number|null;currency:string};
+const cabinPattern=/商務座|商务座|特等座|一等座|二等座|無座|无座|硬座|軟座|软座|硬臥|硬卧|軟臥|软卧|動臥|动卧|グリーン車|指定席|自由席|特選經濟艙|經濟艙|经济舱|商務艙|商务舱|頭等艙|头等舱/;
+const moneyPattern='(HK\\$|HKD|港幣|港币|NT\\$|TWD|RMB|CNY|人民幣|人民币|JPY|日圓|日元|円|USD|US\\$|¥|￥)';
+function currencyCode(symbol:string,context:string){const s=symbol.toUpperCase();if(/HK|港/.test(s))return 'HKD';if(/NT|TWD/.test(s))return 'TWD';if(/RMB|CNY|人民/.test(s))return 'CNY';if(/JPY|日|円/.test(s))return 'JPY';if(/US/.test(s))return 'USD';return /新幹線|新干线|shinkansen|\bJR\b|日本|東京|大阪|京都/i.test(context)?'JPY':'CNY'}
+export function trainNumber(title:string){return title.match(/(?:^|[^A-Za-z0-9])([GDCKTZSY]\d{1,4})(?![A-Za-z0-9])/)?.[1]||''}
+function seatDetails(text:string){const seat=text.match(/(\d{1,2})\s*(?:號車廂|号车厢|號車|号车|車廂|车厢|車|车)\s*(\d{1,3}\s*[A-F](?:\s*[／/、,，]\s*\d{1,3}\s*[A-F])*)/);return {seat:seat?`${seat[1]}車 ${seat[2].replace(/\s+/g,'').replace(/[、,，/]/g,'／')}`:'',cabin:text.match(cabinPattern)?.[0]||'',gate:text.match(/(?:檢票口|检票口|登機口|登机口|gate)\s*([0-9]{0,3}[A-Z]?[0-9]{0,3})/i)?.[1]||''}}
+/** Reads what a single itinerary line says about a flight or train: endpoints, number, arrival, seat and fare. */
+export function ticketDetails(title:string,kind:TicketKind|''):TicketDetails{
+ const clause=title.split(/[；;。]/)[0];const bare=clause.replace(/[（(][^）)]*[）)]?/g,' ');
+ const number=kind==='flight'?flightNumber(title):trainNumber(title)||(kind?'':flightNumber(title));
+ const route=bare.replace(/(?:[01]?\d|2[0-3])[:：][0-5]\d\s*(?:開|开|出發|出发|到達?|抵達?|起飛|起飞|發車|发车)?/g,' ').replace(/(?:^|[^A-Za-z0-9])(?:[A-Z][A-Z0-9]|[0-9][A-Z])\s?\d{2,4}(?![A-Za-z0-9])/g,' ').replace(/(?:^|[^A-Za-z0-9])[GDCKTZSY]\d{1,4}(?![A-Za-z0-9])/g,' ').replace(new RegExp(cabinPattern.source,'g'),' ').replace(new RegExp(moneyPattern+'\\s*[\\d,.]+','gi'),' ').replace(/新幹線|新干线|高鐵|高铁|航班|飛機|飞机|\bJR\b|特急|列車|列车|火車|火车|動車|动车|乘搭|乘坐|乘|搭|坐/g,' ').replace(/^[\s，,、]*(?:由|從|从)/,'').replace(/[，,].*$/,'').trim();
+ const parts=route.split(/\s*(?:→|->|⇒|—|–|～|~|飛往|飞往|前往|開往|开往|往|至|到|去|\bto\b)\s*/i).map(x=>x.replace(/^[:：\s]+|[:：\s]+$/g,''));
+ const from=parts.length>=2?parts[0]:route,to=parts.length>=2?parts[parts.length-1]:'';
+ const arrival=clause.match(/((?:[01]?\d|2[0-3])[:：][0-5]\d)\s*(?:到|抵)/)?.[1]||title.match(/((?:[01]?\d|2[0-3])[:：][0-5]\d)\s*(?:到達|抵達|到站|到(?![家]))/)?.[1]||'';
+ const duration=clause.match(/(\d{1,2})\s*(?:小時|小时|h(?:ours?|rs?)?)\s*(?:(\d{1,2})\s*(?:分|m))?/i);
+ const price=title.match(new RegExp('(?:票價|票价|車費|车费|fare|'+cabinPattern.source+')[^¥￥$\\d；;]{0,8}'+moneyPattern+'\\s*([\\d,]+(?:\\.\\d+)?)','i'));
+ return {from:from.slice(0,100),to:to.slice(0,100),number,arrival:arrival?arrival.replace('：',':').padStart(5,'0'):'',minutes:duration?Number(duration[1])*60+Number(duration[2]||0):0,...seatDetails(title),fare:price?Number(price[2].replace(/,/g,'')):null,currency:price?currencyCode(price[1],title):''};
+}
+/** Looks elsewhere in the document for "G1152（二等座 08 車 12D，檢票口 14A）" style booking notes. */
+export function bookingNote(number:string,text:string){const out={seat:'',cabin:'',gate:''};if(!number)return out;const safe=number.replace(/[^A-Za-z0-9]/g,'');for(const m of text.matchAll(new RegExp(safe.replace(/^([A-Z]+)/,'$1\\s?')+'\\s*[（(]([^）)]{0,80})[）)]','g'))){const d=seatDetails(m[1]);out.seat||=d.seat;out.cabin||=d.cabin;out.gate||=d.gate}return out}
+/** A document-wide transport total, e.g. "來回 2 人總計 約 HK$2,000". */
+export function transportTotal(text:string):{total:number;currency:string;label:string}|null{
+ for(const line of text.split('\n')){const m=line.match(new RegExp('((?:來回|来回|往返)[^\\n¥￥$]{0,24}?(?:總計|总计|合計|合计|總共|总共|共|票價|票价|車費|车费)[^\\n¥￥$\\d]{0,6})'+moneyPattern+'\\s*([\\d,]+(?:\\.\\d+)?)','i'));if(m){const total=Number(m[3].replace(/,/g,''));if(total>0)return {total,currency:currencyCode(m[2],text),label:(m[1]+m[2]+m[3]).replace(/\s+/g,' ').trim()}}}
+ return null}
+const periods:[RegExp,string][]=[[/凌晨/,'05:00'],[/清晨|早上|早晨|朝早/,'08:00'],[/上午/,'09:00'],[/中午|午間|午间/,'12:00'],[/午後|午后|下午/,'14:00'],[/傍晚|黃昏|黄昏/,'18:00'],[/晚上|夜晚|晚間|晚间|入夜/,'20:00'],[/深夜|宵夜/,'22:00']];
+function periodTime(value:string){return periods.find(([p])=>p.test(value))?.[1]||''}
 function parseTime(value:string){
  const timeCell=value.replace(/：|時/g,':');const times=[...timeCell.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)/g)].map(t=>`${t[1].padStart(2,'0')}:${t[2]}`);
  const alternative=times.length>1&&/[／/或]/.test(timeCell);const range=times.length===2&&/[–—~～→-]/.test(timeCell);
- return {time:alternative?'':times[0]||'',end:range?times[1]:'',timeOptions:alternative?times:undefined,hint:alternative?'有多個時間選項，請揀一個。':!times.length?`原文寫「${value||'未提供時間'}」，請補一個開始時間。`:/前|後|后/.test(timeCell)?`原文寫「${value}」，請核對呢個時間限制。`:''};
+ const guess=!times.length?periodTime(value):'';
+ return {time:alternative?'':times[0]||guess,end:range?times[1]:'',timeOptions:alternative?times:undefined,hint:alternative?'有多個時間選項，請揀一個。':guess?`原文只寫「${value.trim()}」，已暫定 ${guess}，請核對。`:!times.length?`原文寫「${value||'未提供時間'}」，請補一個開始時間。`:/前|後|后/.test(timeCell)?`原文寫「${value}」，請核對呢個時間限制。`:''};
 }
 function columns(cells:string[]){
  const find=(pattern:RegExp)=>cells.findIndex(c=>pattern.test(c.trim()));

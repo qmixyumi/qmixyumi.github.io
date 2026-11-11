@@ -14,7 +14,7 @@ self.addEventListener('message',e=>{if(e.data?.type==='SKIP_WAITING')self.skipWa
 self.addEventListener('activate',e=>e.waitUntil((async()=>{const keys=(await caches.keys()).filter(k=>k.startsWith('adventure-'));const previous=keys.filter(k=>k!==CACHE).slice(-1)[0];await Promise.all(keys.filter(k=>k!==CACHE&&k!==previous).map(k=>caches.delete(k)));await self.clients.claim()})()));
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET'||u.origin!==self.location.origin||u.pathname.startsWith('/auth')||u.pathname.startsWith('/api'))return;
 if(e.request.mode==='navigate'){e.respondWith(fetch(e.request,{signal:AbortSignal.timeout(5000)}).catch(async()=>await (await caches.open(CACHE)).match('/')||Response.error()));return}
-if(FILES.has(u.pathname)||SHELL.includes(u.pathname)){e.respondWith((async()=>{const c=await caches.open(CACHE);const hit=await c.match(e.request);if(hit)return hit;const r=await fetch(e.request);if(r.ok)await c.put(e.request,r.clone());return r})())}});`;
+if(FILES.has(u.pathname)||SHELL.includes(u.pathname)){e.respondWith((async()=>{const c=await caches.open(CACHE);const hit=await c.match(e.request,{ignoreVary:true});if(hit)return hit;const r=await fetch(e.request);if(r.ok)await c.put(e.request,r.clone());return r})())}});`;
 await writeFile('standalone-dist/sw.js',worker);
 // Fresh artifact directory on every build: existing local assets remain untouched.
 const out='pages-output/'+version+'-'+Date.now();await mkdir(out,{recursive:true});

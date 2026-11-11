@@ -20,7 +20,7 @@ export function fileItems(data:Data,trips:Trip[]=alive(data.trips)):Item[]{
  const add=(ref:Attachment|undefined,group:Item['group'],owner:string)=>{if(ref&&!seen.has(ref.id)){seen.add(ref.id);items.push({ref,group,owner})}};
  for(const t of trips){for(const a of t.attachments||[])add(a,'附件',t.name);
   for(const x of [...t.stops,...t.notes])if(!x.deletedAt&&x.photo?.startsWith('photo:'))add(photos.get(x.photo),'相片',t.name)}
- if(trips.length===alive(data.trips).length){for(const e of data.quest?.entries||[])if(e.photo.startsWith('photo:'))add(photos.get(e.photo),'相片','冒險評鑑');for(const p of data.photos||[])add(p,'相片','其他')}
+ if(trips.length===alive(data.trips).length){for(const e of data.quest?.entries||[])if(e.photo.startsWith('photo:'))add(photos.get(e.photo),'相片','評分圖鑑');for(const p of data.photos||[])add(p,'相片','其他')}
  return items;
 }
 async function localBlob(id:string){try{return await readLocalFile(id)}catch{return undefined}}
@@ -56,15 +56,16 @@ async function buildZip(data:Data,items:Item[],progress:(s:string)=>void){
 export function FullBackup({data,onRestore,onMessage}:{data:Data;onRestore:(d:Data,files:number)=>void;onMessage:(s:string)=>void}){
  const [busy,setBusy]=useState(''),[failed,setFailed]=useState<Failure[]>([]);
  async function exportZip(){setBusy('正在準備…');setFailed([]);try{const items=fileItems(data);const r=await buildZip(data,items,setBusy);save(r.zip,'qmi-yumi-完整備份-'+new Date().toISOString().slice(0,10)+'.zip');setFailed(r.failed);onMessage(r.failed.length?`ZIP 已下載，${r.count} 個原檔已包括；${r.failed.length} 個未能下載，見下面清單`:`ZIP 已下載，包括資料同 ${r.count} 個原檔`)}catch(e){onMessage(e instanceof Error?e.message:'ZIP 備份失敗')}finally{setBusy('')}}
+ async function restoreJson(file:File){if(file.size>12000000)return onMessage('備份上限 12MB');try{const d=JSON.parse(await file.text());if(!validData(d))throw Error();onRestore(d,0)}catch{onMessage('備份格式無效，現有資料未有改動')}}
  async function restoreZip(file:File){setBusy('讀取 ZIP…');try{const files=await readZip(await file.arrayBuffer());const json=files.get('backup.json');if(!json)throw Error('ZIP 入面搵唔到 backup.json');const d=JSON.parse(new TextDecoder().decode(json));if(!validData(d))throw Error('備份資料格式無效，現有資料未有改動');
   const manifest=JSON.parse(new TextDecoder().decode(files.get('files.json')||new TextEncoder().encode('[]'))) as {id:string;path:string;type:string;size:number}[];let stored=0;
   for(const m of manifest){const bytes=files.get(m.path);if(!bytes||bytes.length!==m.size)continue;setBusy(`還原原檔 ${stored+1}/${manifest.length}`);await storeBlob(m.id,new Blob([bytes as BlobPart],{type:m.type}));stored++}
   onRestore(d,stored)}catch(e){onMessage(e instanceof Error?e.message:'ZIP 還原失敗')}finally{setBusy('')}}
  return <div className="full-backup">
-  <button className="primary" disabled={!!busy} onClick={exportZip}><PackageCheck size={17}/> 匯出完整 ZIP 備份（資料＋相片＋附件）</button>
-  <label className="secondary file-button"><Upload size={17}/> 從完整 ZIP 備份還原<input hidden type="file" accept=".zip,application/zip" disabled={!!busy} onChange={e=>{const f=e.target.files?.[0];if(f)void restoreZip(f);e.target.value=''}}/></label>
+  <button className="primary" disabled={!!busy} onClick={exportZip}><PackageCheck size={17}/> 完整備份（包括相片及附件）</button>
+  <label className="secondary file-button"><Upload size={17}/> 還原備份<input hidden type="file" accept=".zip,application/zip,.json,application/json" disabled={!!busy} onChange={e=>{const f=e.target.files?.[0];if(f)void(/\.json$/i.test(f.name)?restoreJson(f):restoreZip(f));e.target.value=''}}/></label>
   {busy&&<p role="status">{busy}</p>}
-  {failed.length>0&&<div className="failed-list"><b><AlertTriangle size={15}/> 以下原檔未能放入 ZIP</b>{failed.map(f=><p key={f.item.ref.id}>{f.item.group}「{f.item.ref.name}」· {f.item.owner}：{f.reason}</p>)}<small>通常係檔案只喺另一部裝置。喺嗰部裝置登入同步後再匯出一次就會齊。</small></div>}
+  {failed.length>0&&<div className="failed-list"><b><AlertTriangle size={15}/> 以下原檔未能放入 ZIP</b>{failed.map(f=><p key={f.item.ref.id}>{f.item.group}「{f.item.ref.name}」· {f.item.owner}：{f.reason}</p>)}<small>通常係檔案只喺另一部裝置。喺嗰部裝置撳右上角帳戶開啟自動同步，再做一次完整備份就會齊。</small></div>}
  </div>;
 }
 

@@ -9,14 +9,14 @@ import {currencies} from './extras';
 export function ExpenseFields({edit}:{edit:Expense|null}){
  const [total,setTotal]=useState(edit?String(edit.amount):''),[currency,setCurrency]=useState(edit?.currency||'HKD'),[rate,setRate]=useState(edit?String(edit.rate):'1'),[msg,setMsg]=useState(''),[people,setPeople]=useState<string[]>(edit?.people||PEOPLE),[mode,setMode]=useState<Split['mode']>(edit?.split?.mode||'equal'),[shares,setShares]=useState<Record<string,string>>(Object.fromEntries(PEOPLE.map(p=>[p,edit?.split?String(edit.split.shares[p]??''):''])));
  const n=Number(total),r=Number(rate);const preview=currency!=='HKD'&&n>0&&r>0;
- function changeCurrency(c:string){setCurrency(c);if(c==='HKD'){setRate('1');setMsg('HKD 對 HKD = 1')}else{setRate('');setMsg(`已轉為 ${c}，舊匯率已清空：請按「取得參考匯率」或者填實際匯率`)}}
+ function changeCurrency(c:string){setCurrency(c);if(c==='HKD'){setRate('1');setMsg('')}else{setRate('');setMsg(`已轉為 ${c}，舊匯率已清空：請按「取得參考匯率」或者填實際匯率`)}}
  async function fetchRate(){if(currency==='HKD'){setRate('1');setMsg('HKD 對 HKD = 1');return}setMsg('讀取參考匯率中…');try{const res=await fetch('https://api.frankfurter.dev/v1/latest?base='+encodeURIComponent(currency)+'&symbols=HKD',{signal:AbortSignal.timeout(12000)});if(!res.ok)throw Error();const x=await res.json() as {rates:{HKD:number};date:string};if(!Number.isFinite(x.rates?.HKD))throw Error();setRate(String(x.rates.HKD));setMsg('Frankfurter 參考匯率 · '+x.date+'；實際刷卡匯率可能不同，可手動修改。')}catch{setMsg('未能取得參考匯率，請填寫實際匯率。')}}
  const sum=people.reduce((a,p)=>a+(Number(shares[p])||0),0);
  return <>
   <div className="form-grid"><label className="field"><span>全單總額（唔係每人價）</span><input name="amount" type="number" min="0" step="0.01" value={total} onChange={e=>setTotal(e.target.value)} required/></label>
   <label className="field"><span>原幣</span><select name="currency" value={currency} onChange={e=>changeCurrency(e.target.value)}>{currencies.map(k=><option key={k}>{k}</option>)}</select></label>
-  <label className="field"><span>1 {currency} = 幾多 HKD</span><input name="rate" type="number" min="0.000001" step="any" value={rate} onChange={e=>setRate(e.target.value)} required placeholder="請填匯率"/></label>
-  <div className="field rate-tools"><span>&nbsp;</span><button type="button" className="secondary" onClick={fetchRate}>取得參考匯率</button></div></div>
+  {currency==='HKD'?<input type="hidden" name="rate" value="1"/>:<><label className="field"><span>1 {currency} = 幾多 HKD</span><input name="rate" type="number" min="0.000001" step="any" value={rate} onChange={e=>setRate(e.target.value)} required placeholder="請填匯率"/></label>
+  <div className="field rate-tools"><span>&nbsp;</span><button type="button" className="secondary" onClick={fetchRate}>取得參考匯率</button></div></>}</div>
   {preview&&<p className="rate-preview">{currency} {amount(n)} ≈ <b>HKD {amount(n*r)}</b>（1 {currency} = {r} HKD）</p>}
   {currency!=='HKD'&&r===1&&<label className="check-row rate-warning"><input type="checkbox" name="rate-one-ok"/>匯率仍然係 1。我確認 1 {currency} 真係等於 1 HKD</label>}
   {msg&&<p role="status">{msg}</p>}

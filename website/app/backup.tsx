@@ -19,7 +19,7 @@ export function fileItems(data:Data,trips:Trip[]=alive(data.trips)):Item[]{
  const photos=new Map((data.photos||[]).map(p=>[p.id,p]));const items:Item[]=[];const seen=new Set<string>();
  const add=(ref:Attachment|undefined,group:Item['group'],owner:string)=>{if(ref&&!seen.has(ref.id)){seen.add(ref.id);items.push({ref,group,owner})}};
  for(const t of trips){for(const a of t.attachments||[])add(a,'附件',t.name);
-  for(const x of [...t.stops,...t.notes])if(!x.deletedAt&&x.photo?.startsWith('photo:'))add(photos.get(x.photo),'相片',t.name)}
+  for(const x of [...t.stops,...t.notes,...t.notes.filter(n=>!n.deletedAt).flatMap(n=>n.gallery||[])])if(!x.deletedAt&&x.photo?.startsWith('photo:'))add(photos.get(x.photo),'相片',t.name)}
  if(trips.length===alive(data.trips).length){for(const e of data.quest?.entries||[])if(e.photo.startsWith('photo:'))add(photos.get(e.photo),'相片','評分圖鑑');for(const p of data.photos||[])add(p,'相片','其他')}
  return items;
 }

@@ -1,0 +1,84 @@
+/* Usability pass 2026-11: undo labels, photo grids, today mode, bag tabs, packing templates, short screens and a lighter phone header.
+   globals.css loads after app CSS, so rules here are prefixed with .app to win. */
+
+/* Undo: says what it undoes; the toast also offers it */
+.app .trip-toolbar>.undo-btn{max-width:260px}
+.app .undo-btn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.app .toast{max-width:min(92vw,560px)}
+.app .toast .toast-undo{display:inline-flex;align-items:center;gap:5px;margin-left:6px;border:1px solid #9fb88c;border-radius:6px;background:#3a6149;color:#f5f5e4;padding:5px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+
+/* Photos: several per diary page, picked photos can be removed before saving */
+.app .note-photo-picks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:4px 0 12px}
+.app .note-photo-picks figure{position:relative;margin:0}
+.app .note-photo-picks img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block}
+.app .note-photo-picks .icon-btn{position:absolute;top:4px;right:4px;background:#fffef7e6;border-radius:50%;padding:4px}
+.app .journal-photos{display:grid;gap:6px;margin-bottom:16px}
+.app .journal-photos.count-2{grid-template-columns:1fr 1fr}
+.app .journal-photos.count-3{grid-template-columns:repeat(3,1fr)}
+.app .journal-photos img{width:100%;margin:0;border-radius:6px;object-fit:cover}
+.app .journal-photos.count-2 img,.app .journal-photos.count-3 img{aspect-ratio:1}
+
+/* Today mode */
+.app .today-preview-note{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin:0 0 12px;padding:10px 14px;border:1px dashed #c9a24f;border-radius:10px;background:#fff8e6;color:#5a4a26;font-size:13px;line-height:1.6}
+.app .today-quick{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+.app .today-quick .secondary{width:100%;padding:11px 8px;font-size:13px}
+.app .today-tickets{margin-top:8px;border-top:1px solid var(--border)}
+.app .today-next .actions{gap:10px}
+.app .today-preview-btn{display:flex;margin-top:12px;font-size:13px}
+
+/* 旅行背包: real tabs, one section at a time */
+.app .bag-jump .primary,.app .bag-jump .secondary{padding:9px 14px;font-size:13px}
+.app .bag-jump small{margin-left:6px;font-size:11px;opacity:.8}
+.app .pack-templates{margin-top:14px}
+.app .pack-template-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:8px}
+.app .pack-template-list .secondary{flex-direction:column;align-items:flex-start;gap:2px;white-space:normal;text-align:left;padding:10px 12px}
+.app .pack-template-list b{font-size:13px}
+.app .pack-template-list small{color:var(--muted)}
+
+/* 拍攝清單 can be added from the diary page */
+.app .shot-add{flex-wrap:wrap}
+.app .shot-add select:first-child{flex:1 1 220px;min-width:0}
+.app .shot-add input{flex:1 1 180px}
+
+/* Share link panel opens under the button */
+.app .section-title:has(>.plan-actions){position:relative}
+.app .plan-actions{margin-top:0}
+.app .plan-actions .share-panel{position:absolute;right:0;top:calc(100% + 8px);width:min(420px,100%);z-index:30;box-shadow:0 14px 40px #1e3a2c26}
+
+/* 「更多」 help */
+.app .pwa-help ul{margin:0;padding-left:18px;line-height:1.8}
+
+/* Laptops with short screens: all nine menu items stay visible */
+@media(min-width:621px) and (max-height:900px){
+ .app .sidebar{padding-top:20px;padding-bottom:16px}
+ .app .party{margin:18px 0 16px}
+ .app .nav-label{margin-bottom:8px}
+ .app .sidebar nav{gap:2px}
+ .app .sidebar nav button{padding:10px 14px}
+ .app .side-bottom{padding-top:12px}
+ .app .side-bottom p{display:none}
+ .app .side-bottom .local{margin-top:8px}
+}
+@media(min-width:621px) and (max-height:720px){
+ .app .party{display:none}
+ .app .sidebar nav button{padding:8px 12px}
+}
+
+@media(max-width:620px){
+ /* Lighter phone header: content starts higher on every page */
+ .app main{padding-top:8px}
+ .app .pwa-strip{padding:2px 0 4px;margin-bottom:4px;min-height:0}
+ .app .page-heading{margin-bottom:6px;gap:10px}
+ .app .page-heading .eyebrow,.app .page-heading p{display:none}
+ .app .page-heading h1{font-size:24px;line-height:1.35}
+ .app.tab-other .page-heading>.new-trip-btn{display:none}
+ .app .trip-toolbar{padding:8px 0 10px;gap:6px 8px;align-items:center}
+ .app .trip-toolbar>span{display:none}
+ .app .trip-toolbar>div .tag{padding:3px 6px}
+ .app .trip-toolbar .trip-settings-btn{padding:6px 10px}
+ .app .trip-toolbar>.undo-btn{margin-left:0;max-width:100%}
+ .app.tab-other .zone-chip{display:none}
+ .app.tab-other .demo-note{display:none}
+ .app .demo-note{padding:10px 12px;margin-bottom:14px}
+ .app .today-quick{grid-template-columns:1fr 1fr}
+}

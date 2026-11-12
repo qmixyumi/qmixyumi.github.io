@@ -9,7 +9,7 @@
     "dev": "vite --config vite.standalone.config.ts",
     "build": "node scripts/build-standalone.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node scripts/check-model.mjs && node scripts/check-imports.mjs && node scripts/check-docx-import.mjs && node scripts/check-attachment-sync.mjs && node scripts/check-quest.mjs && node scripts/check-collection-rating.mjs && node scripts/check-sync.mjs && node scripts/check-usability.mjs && node scripts/check-categories.mjs && node scripts/check-features.mjs"
+    "test": "node scripts/check-model.mjs && node scripts/check-imports.mjs && node scripts/check-docx-import.mjs && node scripts/check-attachment-sync.mjs && node scripts/check-quest.mjs && node scripts/check-collection-rating.mjs && node scripts/check-sync.mjs && node scripts/check-usability.mjs && node scripts/check-categories.mjs && node scripts/check-features.mjs && node scripts/check-polish.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.119.0",

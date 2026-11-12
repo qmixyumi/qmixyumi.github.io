@@ -1,5 +1,5 @@
 export type TicketKind='flight'|'train'|'high-speed';
-export type ImportRow={ticket?:TicketKind|'';id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string};
+export type ImportRow={ticket?:TicketKind|'';id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string;detail?:string};
 function parsePlainItinerary(text:string,source:string):ImportRow[]{
  const rows:ImportRow[]=[];let day='',date='';
  for(const raw of text.replace(/\r/g,'').split('\n')){let line=raw.replace(/：/g,':').trim();if(!line||/^(?:[（(]?來源|資料查證|资料查证|參考|参考|表\s*\d|查證日期|查证日期)/.test(line))continue;
@@ -79,7 +79,14 @@ function columns(cells:string[]){
  const cols={time:find(/^(時間|时间|開始時間|开始时间|time|start(?: time)?)$/i),end:find(/^(結束時間|结束时间|end(?: time)?)$/i),title:find(/^(安排|行程|活動|活动|名稱|名称|activity|title|event|description)$/i),day:find(/^(day|天數|天数|第幾天)$/i),date:find(/^(日期|date)$/i),place:find(/^(地點|地点|位置|place|location)$/i)};
  return cols.title>=0&&(cols.time>=0||cols.day>=0||cols.date>=0)?cols:null;
 }
-export function parseItinerary(text:string,source:string):ImportRow[]{
+/** Words in brackets are notes (prices, opening hours, tips), not part of the name: 「到長沙南站（大站提早45–60分鐘）」 → 名稱「到長沙南站」，備註「大站提早45–60分鐘」. */
+export function splitBracketNote(text:string):{title:string;detail:string}{const notes:string[]=[];let rest=text,prev='';
+ while(rest!==prev){prev=rest;rest=rest.replace(/[（(]([^（()）]*)[)）]/g,(_,inner:string)=>{if(inner.trim())notes.push(inner.trim());return ' '})}
+ rest=rest.replace(/[（(][^()（）]*$/,m=>{const inner=m.slice(1).trim();if(inner)notes.push(inner);return ''});
+ const title=rest.replace(/\s+([，,、；;：:])/g,'$1').replace(/\s{2,}/g,' ').replace(/^[\s，,、；;]+|[\s，,、；;：:→-]+$/g,'').trim();
+ return title?{title,detail:notes.join('；')}:{title:text.trim(),detail:''}}
+export function parseItinerary(text:string,source:string):ImportRow[]{return parseItineraryRows(text,source).map(r=>{const {title,detail}=splitBracketNote(r.title);return detail?{...r,title,detail:r.detail?r.detail+'；'+detail:detail}:r})}
+function parseItineraryRows(text:string,source:string):ImportRow[]{
  if(!text.includes('[[TABLE]]')){
   if(text.split('\n').some(l=>columns(l.split('\t'))))text='[[TABLE]]\n'+text+'\n[[/TABLE]]';
   else return parsePlainItinerary(text,source);

@@ -28,6 +28,9 @@ jobs:
       - run: npm test
       - id: build
         run: npm run build
+        env:
+          # Keeps the hashed files of the last few deploys, so a page opened before this deploy can still load its Word/Excel/PDF/photo readers.
+          PREVIOUS_SITE: https://qmixyumi.github.io
       - uses: actions/upload-pages-artifact@v4
         with:
           path: website/${{ steps.build.outputs.path }}

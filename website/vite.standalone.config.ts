@@ -1,3 +1,4 @@
 import {defineConfig} from 'vite';
 import react from '@vitejs/plugin-react';
-export default defineConfig({plugins:[react()],build:{outDir:'standalone-dist',emptyOutDir:false,manifest:true}});
+import {ocrAssets} from './ocr-assets.mjs';
+export default defineConfig({plugins:[react(),ocrAssets()],build:{outDir:'standalone-dist',emptyOutDir:false,manifest:true}});

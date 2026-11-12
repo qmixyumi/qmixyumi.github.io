@@ -38,3 +38,13 @@ if(process.argv[2]){
  console.log(JSON.stringify({rows:result.length,dayCounts:[5,5,6],...meta,needsTime:result.filter(r=>!r.time).map(r=>({day:r.day,hint:r.hint})),park:{time:park.time,end:park.end}},null,2));
 }
 console.log('PASS: DOCX table structure, Chinese days, date alternatives, metadata exclusion and schedule-only times');
+
+// Bracketed words are notes, not part of the stop name (KC: 「到長沙南站（大站提早45–60分鐘）」 should fill only 到長沙南站).
+const hinted=parseItinerary('Day 3\n14:15前 到長沙南站（大站提早45–60分鐘）\n08:30 退房（12:00前），行李寄存前台\n09:02 高鐵出發（G914 4h17m ¥535）\n10:00 （全部都喺括號）','plain');
+assert.equal(hinted[0].title,'到長沙南站');assert.equal(hinted[0].detail,'大站提早45–60分鐘');
+assert.equal(hinted[1].title,'退房，行李寄存前台');assert.equal(hinted[1].detail,'12:00前');
+assert.equal(hinted[2].title,'高鐵出發');assert.equal(hinted[2].ticket,'high-speed');
+assert.equal(hinted[3].title,'（全部都喺括號）');
+const tableHint=parseItinerary(docxStructuredText('<p>第一天</p><table><tr><td>時間</td><td>安排</td></tr><tr><td>18:30</td><td>晚餐：火宮殿（人均¥55–63）</td></tr></table>'),'docx');
+assert.equal(tableHint[0].detail,'人均¥55–63');assert.ok(!tableHint[0].title.includes('人均'));
+console.log('PASS: bracket notes kept out of names');

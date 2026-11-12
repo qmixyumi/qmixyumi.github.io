@@ -225,7 +225,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
   {notice&&<p role="status" className="q-notice">{notice}</p>}
   {exports.length>0&&<div className="q-downloads">{exports.map((f,i)=><a key={f.url} href={f.url} download={f.name}>↓ 下載排行榜 PNG · 第 {i+1} 頁</a>)}</div>}
   <p className="q-sync">評分自動儲存喺本機 · 登入後自動同步共用圖鑑</p>
-  <dialog ref={dialog} className={`q-modal quest qk-${kind}`} onInput={()=>{edited.current=true}} onCancel={e=>{e.preventDefault();if(draft)cancel();else close()}}>
+  <dialog ref={dialog} className={`q-modal quest qk-${kind}`} onInput={()=>{edited.current=true}} onCancel={e=>{if(e.target!==e.currentTarget)return;e.preventDefault();if(draft)cancel();else close()}}>
    {(draft||folderForm||metrics)&&<button type="button" className="q-close" aria-label="關閉" onClick={()=>draft?cancel():close()}><X/></button>}
    {draft&&(draft.kind==='food'?foodForm(draft):draft.kind==='spot'?spotForm(draft):hotelForm(draft))}
    {folderForm&&<form className="q-form" onSubmit={e=>{e.preventDefault();const name=folderForm.name.trim();if(!name)return;commit(n=>{if(folderForm.id)n.folders.find(f=>f.id===folderForm.id)!.name=name;else n.folders.push({id:crypto.randomUUID(),name,kind})});close()}}><h2 className="q-form-title">{folderForm.id?'檔案改名':'新增檔案'}</h2><label>檔案名稱<input required maxLength={60} value={folderForm.name} onChange={e=>setFolderForm({...folderForm,name:e.target.value})} placeholder="例如 北疆 第一集／馬來西亞"/></label><div className="q-form-actions"><button type="button" className="q-btn" onClick={()=>close()}>取消</button><button className="q-btn q-green">儲存</button></div></form>}

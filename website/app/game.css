@@ -1,0 +1,97 @@
+/* Game adventure look (body.game). The 評分圖鑑 keeps its own filmed look, so nothing here styles inside main.quest-active. */
+body.game{--ink:#1d2342;--muted:#666b89;--paper:#f6e7bd;--border:#1d2342;--green:#27306b;--mint:#ffe08a;--gold:#ffc23d;--g-ink:#1d2342;--g-gold:#ffc23d;--g-coral:#ef5b3f;--g-teal:#17a398;color:var(--ink);background-color:#f6e7bd;background-image:linear-gradient(#1d234216 1px,transparent 1px),linear-gradient(90deg,#1d234216 1px,transparent 1px),linear-gradient(#1d23421c 2px,transparent 2px),linear-gradient(90deg,#1d23421c 2px,transparent 2px);background-size:32px 32px,32px 32px,160px 160px,160px 160px;background-attachment:fixed}
+body.game::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(220px circle at var(--mx,-999px) var(--my,-999px),#ffd45e88,transparent 70%)}
+body.game .app h1,body.game .app h2{font-family:'Noto Sans TC',sans-serif;font-weight:800;letter-spacing:.5px}
+/* Side menu: night-sky game panel */
+body.game .app .sidebar{background-color:#1a2046;background-image:linear-gradient(#ffffff0d 1px,transparent 1px),linear-gradient(90deg,#ffffff0d 1px,transparent 1px);background-size:20px 20px;border-right:4px solid var(--g-ink);color:#e8ebff}
+body.game .app .brand{font-family:'Silkscreen','Noto Sans TC',sans-serif;letter-spacing:1px}
+body.game .app .brand small{color:var(--g-gold);font-family:'Silkscreen',monospace;letter-spacing:.5px}
+body.game .app .brand-icon{background:var(--g-gold);color:var(--g-ink);border-radius:10px;border:2px solid #0d1230;box-shadow:0 3px 0 #0d1230}
+body.game .app .avatar{background:#fff3c9;border-color:#1a2046}
+body.game .app .peach{background:#ffc9b8}
+body.game .app .party small,body.game .app .nav-label{color:#9aa3d6}
+body.game .app .nav-label{font-family:'Silkscreen',monospace}
+body.game .app .sidebar nav button{color:#c9cff5;border:2px solid transparent;border-radius:10px;transition:transform .12s,background .12s}
+body.game .app .sidebar nav button:hover{background:#ffffff14;transform:translateX(4px);filter:none}
+body.game .app .sidebar nav button.active{background:var(--g-gold);color:var(--g-ink);border-color:#0d1230;box-shadow:0 4px 0 #0d1230;font-weight:800}
+body.game .app .nav-dot{background:var(--g-coral);width:8px;height:8px;border-radius:2px;animation:g-blink 1.2s steps(2) infinite}
+body.game .app .level span{color:var(--g-gold);font-family:'Silkscreen',monospace}
+body.game .app .progress{height:12px;background:#0d1230;border:2px solid #0d1230;border-radius:4px;overflow:hidden}
+body.game .app .progress i{background:repeating-linear-gradient(90deg,var(--g-gold) 0 10px,#e09a12 10px 12px);transition:width .5s}
+body.game .app .side-bottom p{color:#9aa3d6}
+body.game .app .local{color:#aab2e0}
+/* Top bar */
+body.game .app .topbar{background:#fff8e1;border-bottom:3px solid var(--g-ink)}
+body.game .app .breadcrumb{color:var(--muted)}
+body.game .app .search-pill,body.game .app .account-chip,body.game .app .look-toggle{border:2px solid var(--g-ink);background:#fff;color:var(--g-ink);box-shadow:0 3px 0 var(--g-ink);transition:transform .1s,box-shadow .1s}
+body.game .app .search-pill:active,body.game .app .account-chip:active,body.game .app .look-toggle:active{transform:translateY(3px);box-shadow:none}
+body.game .app .look-toggle{background:var(--g-gold)}
+/* Headings */
+body.game .app .eyebrow{font-family:'Silkscreen','Noto Sans TC',sans-serif;color:var(--g-coral);letter-spacing:1px}
+body.game .app .page-heading h1{color:var(--g-ink);text-shadow:3px 3px 0 #ffc23d99}
+body.game .app .page-heading p,body.game .app .muted{color:var(--muted)}
+body.game .app .pwa-strip{color:var(--muted);border-bottom-color:#1d234233}
+body.game .app .trip-toolbar{border-top:2px dashed #1d234255;color:var(--muted)}
+body.game .app footer{border-top:2px dashed #1d234255;color:var(--muted)}
+body.game .app main:not(.quest-active) footer span:last-child{font-family:'Silkscreen',monospace}
+/* Buttons: chunky, press down like a game button */
+body.game .app main:not(.quest-active) .primary,body.game .app main:not(.quest-active) .dark-btn,body.game dialog .primary{background:var(--g-gold);color:var(--g-ink);border:2px solid var(--g-ink);box-shadow:0 4px 0 var(--g-ink);border-radius:10px;font-weight:800;transition:transform .1s,box-shadow .1s}
+body.game .app main:not(.quest-active) .secondary,body.game dialog .secondary{background:#fff;color:var(--g-ink);border:2px solid var(--g-ink);box-shadow:0 3px 0 var(--g-ink);border-radius:10px;font-weight:700;transition:transform .1s,box-shadow .1s}
+body.game .app main:not(.quest-active) .primary:hover,body.game .app main:not(.quest-active) .dark-btn:hover,body.game .app main:not(.quest-active) .secondary:hover{transform:translateY(-1px);filter:none}
+body.game .app main:not(.quest-active) .primary:active,body.game .app main:not(.quest-active) .dark-btn:active,body.game .app main:not(.quest-active) .secondary:active,body.game dialog .primary:active,body.game dialog .secondary:active{transform:translateY(3px);box-shadow:0 0 0 var(--g-ink)}
+body.game .app .text-btn{color:#3d47a8}
+body.game .app .tag{background:#fff;border:2px solid var(--g-ink);color:var(--g-ink);border-radius:6px}
+body.game .app .pill{background:var(--g-ink);border-color:var(--g-ink);color:var(--g-gold);font-family:'Silkscreen',monospace;border-radius:6px}
+/* Cards: outlined tiles with a hard shadow */
+body.game .app main:not(.quest-active) .panel,body.game .app .stats article,body.game .app .selected-card,body.game .app .board-day,body.game .app .today-card,body.game .app .inline-detail{background:#fffdf4;border:2px solid var(--g-ink);border-radius:14px;box-shadow:5px 5px 0 #1d2342}
+body.game .app .stats article,body.game .app .board-day{transition:transform .15s,box-shadow .15s}
+body.game .app .stats article:hover,body.game .app .board-day:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 #1d2342}
+body.game .app .today-card{background:#fff3c4}
+body.game .app .demo-note,body.game .app .alert-panel{border:2px dashed var(--g-ink);background:#fff3c4;color:var(--g-ink);border-radius:12px}
+body.game .app input,body.game .app select,body.game .app textarea,body.game dialog input,body.game dialog select,body.game dialog textarea{border-color:#1d234266}
+body.game .app main:not(.quest-active) input:focus,body.game .app main:not(.quest-active) select:focus,body.game .app main:not(.quest-active) textarea:focus,body.game dialog input:focus,body.game dialog select:focus,body.game dialog textarea:focus{outline:3px solid var(--g-gold);outline-offset:1px;border-color:var(--g-ink)}
+body.game dialog{border:3px solid var(--g-ink);border-radius:16px;box-shadow:8px 8px 0 #1d2342,0 25px 100px #0b0f2a88;background:#fffdf4}
+body.game dialog::backdrop{background:#12173acc;background-image:linear-gradient(#ffffff0a 1px,transparent 1px),linear-gradient(90deg,#ffffff0a 1px,transparent 1px);background-size:32px 32px}
+body.game .toast{background:var(--g-ink);color:#fff;border:2px solid var(--g-gold);border-radius:10px;box-shadow:0 4px 0 #0008}
+/* Lobby hero: quest banner */
+body.game .app .hero{border:3px solid var(--g-ink);border-radius:16px;box-shadow:6px 6px 0 #1d2342;background:#1a2046}
+body.game .app .hero-copy{background:linear-gradient(90deg,#1a2046 85%,transparent);color:#fff}
+body.game .app .hero-copy h2{color:#fff}
+body.game .app .hero-copy em{color:var(--g-gold)}
+body.game .app .hero-copy p,body.game .app .hero-foot{color:#b9c0ee}
+body.game .app .hero-foot{font-family:'Silkscreen',monospace}
+body.game .app .hero-copy .text-btn{color:#ffe08a}
+/* Day picker: level-select tiles */
+body.game .app .days{padding:4px 4px 12px}
+body.game .app .days button{background:#fffdf4;border:2px solid var(--g-ink);border-radius:12px;box-shadow:0 4px 0 var(--g-ink);transition:transform .12s,box-shadow .12s}
+body.game .app .days button:hover{transform:translateY(-3px);box-shadow:0 7px 0 var(--g-ink);filter:none}
+body.game .app .days small{font-family:'Silkscreen',monospace;color:var(--g-coral)}
+body.game .app .days span{color:var(--muted)}
+body.game .app .days button.current{background:var(--g-ink);color:#fff;border-color:var(--g-ink);box-shadow:0 4px 0 var(--g-gold);transform:translateY(-2px)}
+body.game .app .days button.current small{color:var(--g-gold)}
+body.game .app .days button.current span{color:#c3c9f3}
+/* Itinerary pieces */
+body.game .app .scope-switch{border:2px solid var(--g-ink);background:#fff;box-shadow:0 3px 0 var(--g-ink)}
+body.game .app .scope-switch button.on{background:var(--g-ink);color:var(--g-gold)}
+body.game .app .ribbon-track{border:2px solid var(--g-ink);background:repeating-linear-gradient(90deg,#1d234214 0 1px,transparent 1px 28px),#fff6d6}
+body.game .app .quest-step .timeline-card{border:2px solid var(--g-ink);border-left:7px solid var(--kc);border-radius:12px;box-shadow:3px 3px 0 #1d2342}
+body.game .app .quest-step .timeline-card:hover{transform:translate(-1px,-2px);box-shadow:5px 6px 0 #1d2342}
+body.game .app .quest-step.chosen .timeline-card{border-color:var(--g-ink);border-left-color:var(--kc);box-shadow:3px 3px 0 var(--kc)}
+body.game .app .quest-step .time-marker i.step-node{border-color:var(--g-ink);box-shadow:0 4px 0 var(--g-ink);background:color-mix(in srgb,var(--kc) 22%,#fff)}
+body.game .app .quest-step .step-node em{border-color:var(--g-ink)}
+body.game .app .quest-step.visited .step-node{background:var(--g-gold)}
+body.game .app .timeline-item.quest-step{border-left-color:#1d234266}
+body.game .app .timeline-tools button{color:#3d47a8;font-weight:700}
+body.game .app .travel-pill{border-color:#1d234277;background:#fff}
+body.game .app .board-head{background:var(--g-ink)}
+body.game .app .board-head small{color:var(--g-gold);opacity:1}
+body.game .app .board-stop{box-shadow:inset 0 0 0 1px #1d234222}
+body.game .app .day-loot .loot-cells i{border-color:var(--g-ink);background:#fff}
+body.game .app .day-loot .loot-cells i.got{background:var(--g-gold);border-color:var(--g-ink)}
+@keyframes g-blink{50%{opacity:.25}}
+@media(max-width:860px){
+ body.game{background-size:24px 24px,24px 24px,120px 120px,120px 120px}
+ body.game .app main:not(.quest-active) .panel,body.game .app .stats article,body.game .app .selected-card,body.game .app .board-day,body.game .app .today-card,body.game .app .inline-detail,body.game .app .hero{box-shadow:3px 3px 0 #1d2342}
+ body.game .app .page-heading h1{text-shadow:2px 2px 0 #ffc23d99}
+}
+@media(prefers-reduced-motion:reduce){body.game .app .nav-dot{animation:none}body.game::before{display:none}}

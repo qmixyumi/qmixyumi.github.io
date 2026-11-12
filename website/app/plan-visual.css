@@ -1,0 +1,75 @@
+/* Picture-style itinerary (both looks): colour per kind, stage nodes, time ribbon and whole-trip board. */
+.app .scope-switch{display:inline-flex;gap:4px;padding:4px;margin:0 0 16px;border:1px solid var(--border);border-radius:12px;background:#fffef7}
+.app .scope-switch button{border:0;background:transparent;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:700;color:var(--muted)}
+.app .scope-switch button.on{background:var(--green);color:#fff}
+.app .look-toggle{display:inline-flex;align-items:center;gap:6px;border:1px solid #cfd8c0;border-radius:30px;background:#fffef7;padding:7px 12px;font-size:13px;font-weight:700;white-space:nowrap}
+.app .kind-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 0 18px;font-size:13px;color:var(--muted)}
+.app .kind-legend span{display:inline-flex;align-items:center;gap:5px}
+.app .kind-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.app .day-ribbon{margin:2px 0 0}
+.app .ribbon-track{position:relative;height:38px;border-radius:10px;background:repeating-linear-gradient(90deg,#0000000a 0 1px,transparent 1px 28px),#f1f0e2;border:1px solid var(--border);overflow:hidden}
+.app .ribbon-block{position:absolute;top:4px;bottom:4px;min-width:24px;border:0;border-radius:7px;padding:0;display:grid;place-items:center;color:#fff;font-size:15px;overflow:hidden;box-shadow:inset 0 -3px 0 #0003;transition:transform .15s}
+.app .ribbon-block:hover{transform:translateY(-2px);z-index:2}
+.app .ribbon-block.on{outline:3px solid var(--ink);outline-offset:-1px;z-index:3}
+.app .ribbon-block.done{opacity:.55}
+.app .ribbon-block span{filter:drop-shadow(0 1px 0 #0005);line-height:1}
+.app .ribbon-ticks{position:relative;height:18px;margin:3px 0 0;font-size:11px;color:var(--muted)}
+.app .ribbon-ticks span{position:absolute;transform:translateX(-50%);font-size:11px}
+.app .ribbon-ticks span:first-child{transform:none}
+.app .ribbon-ticks span:last-child{transform:translateX(-100%)}
+.app .day-loot{display:flex;align-items:center;gap:8px;font-size:13px}
+.app .day-loot .loot-chest{font-size:24px;line-height:1}
+.app .day-loot b{display:block;font-size:13px}
+.app .day-loot .loot-cells{display:flex;gap:3px;margin-top:4px}
+.app .day-loot .loot-cells i{width:14px;height:8px;border-radius:2px;background:#e3e3d2;border:1px solid #0000001f}
+.app .day-loot .loot-cells i.got{background:#f2b134;border-color:#b47a0c}
+.app .day-loot.complete .loot-chest{animation:loot-pop .6s ease}
+/* Stage path */
+.app .timeline-item.quest-step{padding-left:38px;margin-left:24px;padding-bottom:22px;border-left:3px dashed color-mix(in srgb,var(--kc) 50%,#dcdccb)}
+.app .timeline-item.quest-step:last-child{border-left-color:transparent}
+.app .quest-step .time-marker{min-height:34px;margin-bottom:8px;gap:8px}
+.app .quest-step .step-time b{font-size:19px;font-weight:800;color:var(--kc);letter-spacing:.5px}
+.app .quest-step .step-time em{font-style:normal;font-size:13px;color:var(--muted);margin-left:2px}
+.app .quest-step .time-marker i.step-node{position:absolute;left:-26px;top:-6px;width:48px;height:48px;border-radius:13px;background:#fff;border:3px solid var(--kc);box-shadow:0 4px 0 color-mix(in srgb,var(--kc) 70%,#000);display:grid;place-items:center;font-size:23px;font-style:normal;transition:transform .15s}
+.app .quest-step:hover .step-node{transform:translateY(-2px) rotate(-3deg)}
+.app .quest-step .step-node em{position:absolute;top:-9px;right:-9px;min-width:20px;height:20px;border-radius:10px;background:var(--kc);color:#fff;border:2px solid #fff;font:700 11px/1 'Noto Sans TC',sans-serif;display:grid;place-items:center}
+.app .quest-step.visited .step-node{background:color-mix(in srgb,var(--kc) 22%,#fff)}
+.app .quest-step.visited .step-node em{background:#1f9d55;animation:loot-pop .5s ease}
+.app .quest-step .timeline-card{border-left:6px solid var(--kc);background:color-mix(in srgb,var(--kc) 5%,#fffef9);padding:14px 15px;transition:transform .15s,box-shadow .15s}
+.app .quest-step .timeline-card:hover{transform:translateX(3px)}
+.app .quest-step.chosen .timeline-card{background:color-mix(in srgb,var(--kc) 13%,#fffef9);border-color:var(--kc);box-shadow:none}
+.app .quest-step.has-warning .timeline-card{box-shadow:0 0 0 2px #d9a441}
+.app .quest-step.visited .timeline-card h3{text-decoration:line-through;text-decoration-color:#0004}
+.app .quest-step .kind-chip{background:var(--kc);color:#fff;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.app .quest-step .timeline-card h3{font-size:16px;margin:10px 0 5px;line-height:1.5}
+.app .quest-step .timeline-card p{font-size:13px}
+.app .quest-step .travel-link{margin-top:12px}
+.app .travel-pill{display:inline-flex;align-items:center;gap:6px;border:1.5px dashed #c5c8b4;background:#fffef7;border-radius:999px;padding:4px 12px;font-size:13px;color:var(--muted)}
+.app .travel-pill i{font-style:normal;font-size:15px}
+/* Whole-trip board */
+.app .trip-board{margin-bottom:10px}
+.app .board-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(215px,1fr);gap:12px;overflow-x:auto;padding:4px 10px 14px 2px;align-items:start}
+.app .board-day{background:#fffef7;border:1px solid var(--border);border-radius:12px;overflow:hidden;min-width:0}
+.app .board-day.today{outline:3px solid #f2b134;outline-offset:1px}
+.app .board-head{display:block;width:100%;text-align:left;border:0;background:var(--green);color:#fff;padding:10px 13px}
+.app .board-head small{display:block;font-size:11px;letter-spacing:1.5px;opacity:.8;font-family:'Silkscreen','Noto Sans TC',sans-serif}
+.app .board-head strong{display:inline-block;font-size:17px;margin:2px 8px 0 0}
+.app .board-head span{font-size:12px;opacity:.85}
+.app .board-list{display:grid;gap:6px;padding:10px}
+.app .board-stop{display:grid;grid-template-columns:auto 22px minmax(0,1fr);gap:6px;align-items:center;text-align:left;border:0;border-left:5px solid var(--kc);border-radius:7px;background:color-mix(in srgb,var(--kc) 9%,#fff);padding:8px 9px;font-size:13px;transition:transform .12s}
+.app .board-stop:hover{transform:translateX(3px)}
+.app .board-stop time{font-weight:800;color:var(--kc);font-size:13px;font-variant-numeric:tabular-nums}
+.app .board-stop .board-icon{font-size:16px;text-align:center}
+.app .board-stop b{font-weight:600;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+.app .board-stop.done{opacity:.6}
+.app .board-stop.done b{text-decoration:line-through}
+.app .board-empty{border:1.5px dashed #c9cdb9;background:transparent;border-radius:7px;padding:10px;font-size:13px;color:var(--muted)}
+@keyframes loot-pop{0%{transform:scale(.4)}60%{transform:scale(1.35)}100%{transform:scale(1)}}
+@media(max-width:860px){
+ .app .look-toggle{padding:7px 9px}.app .look-toggle span{display:none}
+ .app .scope-switch{display:flex}.app .scope-switch button{flex:1;padding:9px 6px}
+ .app .board-grid{grid-auto-columns:78%}
+ .app .timeline-item.quest-step{margin-left:22px;padding-left:34px}
+ .app .quest-step .timeline-card h3{font-size:16px}
+}
+@media(prefers-reduced-motion:reduce){.app .quest-step .step-node em,.app .day-loot .loot-chest{animation:none}}

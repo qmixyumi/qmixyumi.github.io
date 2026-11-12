@@ -1,5 +1,5 @@
 export type TicketKind='flight'|'train'|'high-speed';
-export type ImportRow={ticket?:TicketKind|'';id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string;detail?:string};
+export type ImportRow={ticket?:TicketKind|'';id:string;day:string;date:string;time:string;end:string;title:string;place:string;kind:string;source:string;include:boolean;timeOptions?:string[];hint?:string;detail?:string;original?:string};
 function parsePlainItinerary(text:string,source:string):ImportRow[]{
  const rows:ImportRow[]=[];let day='',date='';
  for(const raw of text.replace(/\r/g,'').split('\n')){let line=raw.replace(/：/g,':').trim();if(!line||/^(?:[（(]?來源|資料查證|资料查证|參考|参考|表\s*\d|查證日期|查证日期)/.test(line))continue;
@@ -85,7 +85,16 @@ export function splitBracketNote(text:string):{title:string;detail:string}{const
  rest=rest.replace(/[（(][^()（）]*$/,m=>{const inner=m.slice(1).trim();if(inner)notes.push(inner);return ''});
  const title=rest.replace(/\s+([，,、；;：:])/g,'$1').replace(/\s{2,}/g,' ').replace(/^[\s，,、；;]+|[\s，,、；;：:→-]+$/g,'').trim();
  return title?{title,detail:notes.join('；')}:{title:text.trim(),detail:''}}
-export function parseItinerary(text:string,source:string):ImportRow[]{return parseItineraryRows(text,source).map(r=>{const {title,detail}=splitBracketNote(r.title);return detail?{...r,title,detail:r.detail?r.detail+'；'+detail:detail}:r})}
+/** Keeps only the main place or action as the name (a comma only cuts before a longer clause, so 「早餐,咖啡」 stays): 「坡子街夜市 → 有精力就去超級文和友」 → 「坡子街夜市」, 「晚餐：火宮殿」 → 「火宮殿」, 「退房，行李寄存前台」 → 「退房」.
+ * The words cut off are returned so they can go to 備註. OCR often reads → as 一, so 一 followed by a next step also counts as an arrow. */
+export function mainName(text:string):{name:string;rest:string}{let t=text.trim();const rest:string[]=[];
+ t=t.replace(/^[“”"'《》「」|·•\-\s]+|[“”"'《》「」|·•\-\s]+$/g,'');const meal=t.match(/^.?(早餐|午餐|晚餐|宵夜|下午茶|早午餐)\s*[：:]\s*(.+)$/);if(meal)t=meal[2];
+ else{const label=t.match(/^([^\s：:，,；;→]{1,4})\s*[：:]\s*(.+)$/);if(label&&!/\d$/.test(label[1])){rest.push(label[2]);t=label[1]}}
+ const cut=t.search(/\s*(?:→|⇒|➜|➔|->|=>)\s*|\s*[，,；;。]\s*(?=\S{4})|(?<=[\u3400-\u9fff])(?<![五第十二三四六七八九百千萬星週周初單唯統])一(?=有|去|地鐵|地铁|打的|搭|坐|乘|轉|转|再|返|回|行|步行|\s*\d)/);
+ if(cut>0){const after=t.slice(cut).replace(/^\s*(?:→|⇒|➜|➔|->|=>|[，,；;。]|一)\s*/,'').trim();if(after)rest.unshift(after);t=t.slice(0,cut).trim()}
+ t=t.replace(/[\s“”"'《》「」|·•-]+$/,'');
+ return t?{name:t,rest:rest.join('；')}:{name:text.trim(),rest:''}}
+export function parseItinerary(text:string,source:string):ImportRow[]{return parseItineraryRows(text,source).map(r=>{const {title:bare,detail}=splitBracketNote(r.title);const {name,rest}=mainName(bare);const notes=[rest,detail,r.detail].filter(Boolean).join('；');return name===r.title&&!notes?r:{...r,title:name,detail:notes,original:r.title}})}
 function parseItineraryRows(text:string,source:string):ImportRow[]{
  if(!text.includes('[[TABLE]]')){
   if(text.split('\n').some(l=>columns(l.split('\t'))))text='[[TABLE]]\n'+text+'\n[[/TABLE]]';

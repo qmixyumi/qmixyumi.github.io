@@ -42,9 +42,17 @@ console.log('PASS: DOCX table structure, Chinese days, date alternatives, metada
 // Bracketed words are notes, not part of the stop name (KC: 「到長沙南站（大站提早45–60分鐘）」 should fill only 到長沙南站).
 const hinted=parseItinerary('Day 3\n14:15前 到長沙南站（大站提早45–60分鐘）\n08:30 退房（12:00前），行李寄存前台\n09:02 高鐵出發（G914 4h17m ¥535）\n10:00 （全部都喺括號）','plain');
 assert.equal(hinted[0].title,'到長沙南站');assert.equal(hinted[0].detail,'大站提早45–60分鐘');
-assert.equal(hinted[1].title,'退房，行李寄存前台');assert.equal(hinted[1].detail,'12:00前');
+assert.equal(hinted[1].title,'退房');assert.equal(hinted[1].detail,'行李寄存前台；12:00前');
 assert.equal(hinted[2].title,'高鐵出發');assert.equal(hinted[2].ticket,'high-speed');
 assert.equal(hinted[3].title,'（全部都喺括號）');
 const tableHint=parseItinerary(docxStructuredText('<p>第一天</p><table><tr><td>時間</td><td>安排</td></tr><tr><td>18:30</td><td>晚餐：火宮殿（人均¥55–63）</td></tr></table>'),'docx');
 assert.equal(tableHint[0].detail,'人均¥55–63');assert.ok(!tableHint[0].title.includes('人均'));
 console.log('PASS: bracket notes kept out of names');
+
+// Only the main place stays in the name (KC: 「坡子街夜市 → 有精力就去超級文和友」 → 「坡子街夜市」); OCR reads → as 一.
+const named=parseItinerary('Day 1\n20:00後 坡子街夜市 → 有精力就去超級文和友宵夜（開到凌晨2–3點）\n20:30 坡子街夜市一有精力就去超級文和友宵夜\n18:30 晚餐：火宮殿·坡子街總店（人均¥55–63）\n08:30 退房（12:00前），行李寄存前台\n13:20 到長沙南一地鐵2號線 / 打的去五一廣場酒店\n09:00 出發：打的約30分鐘\n10:00 五一廣場\n11:00 一票通入園','plain');
+assert.deepEqual(named.map(r=>r.title),['坡子街夜市','坡子街夜市','火宮殿·坡子街總店','退房','到長沙南','出發','五一廣場','一票通入園']);
+assert.equal(named[0].detail,'有精力就去超級文和友宵夜；開到凌晨2–3點');assert.equal(named[2].kind,'美食');assert.equal(named[5].detail,'打的約30分鐘');
+console.log('PASS: names keep only the main place, the rest goes to 備註');
+const ocrNames=parseItinerary('Day 1\n18:30 上晚餐: 次宮殿 - 坡子街總店\n15:13 直達返西九龍一 18:12 到\n09:02 高鐵出發 《','plain').map(r=>r.title);
+assert.deepEqual(ocrNames,['次宮殿 - 坡子街總店','直達返西九龍','高鐵出發']);console.log('PASS: OCR noise around names');

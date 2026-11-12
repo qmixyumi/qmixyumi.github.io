@@ -1,0 +1,27 @@
+/* Read-only shared trip page and the share panel inside the app */
+.shared-page{max-width:720px;margin:0 auto;padding:28px 16px 40px;color:var(--ink)}
+.shared-page .shared-head{margin-bottom:18px}
+.shared-page .shared-head h1{font:700 28px/1.3 'Noto Serif TC',serif;margin:6px 0}
+.shared-page .shared-head p{margin:0 0 6px;color:#536c4b;font-weight:600}
+.shared-page .shared-head small{color:var(--muted)}
+.shared-page .eyebrow{font-size:12px;letter-spacing:2px;color:#7b8f63;font-weight:700}
+.shared-page .shared-card{background:#fffef7;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px}
+.shared-page .shared-card h2{font:700 17px/1.4 'Noto Serif TC',serif;margin:0 0 10px}
+.shared-page .shared-card h2 small{font:500 13px 'Noto Sans TC',sans-serif;color:var(--muted);margin-left:6px}
+.shared-page .shared-stop{display:grid;grid-template-columns:92px 1fr;gap:10px;padding:10px 0;border-top:1px solid var(--border)}
+.shared-page .shared-stop:first-of-type{border-top:0}
+.shared-page .shared-time{font-weight:700;color:#536c4b;font-size:13px}
+.shared-page .shared-stop b{display:block}
+.shared-page .shared-stop small{display:block;color:var(--muted);margin-top:2px}
+.shared-page .shared-stop p{margin:6px 0 0;font-size:13px;line-height:1.6}
+.shared-page .shared-stop a{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:13px;color:#264d3c;font-weight:600}
+.shared-page .shared-ticket{display:flex;flex-wrap:wrap;gap:4px 12px;margin:0 0 8px}
+.shared-page .shared-ticket small{color:var(--muted);width:100%}
+.shared-page .muted{color:var(--muted)}
+.shared-page .shared-foot{text-align:center;color:var(--muted);font-size:12px;letter-spacing:1px;margin-top:24px}
+@media(max-width:480px){.shared-page .shared-stop{grid-template-columns:1fr;gap:2px}}
+.app .share-panel{position:relative;width:100%;margin:12px 0;padding:14px 16px;border:1px solid #cfd8c0;border-radius:12px;background:#fffef7}
+.app .share-panel .section-title{margin:0}
+.app .share-panel h3{font-size:15px;margin:0}
+.app .share-panel p{font-size:13px;line-height:1.6;margin:8px 0}
+.app .share-panel .share-url{width:100%;font-size:12px;margin-top:8px}

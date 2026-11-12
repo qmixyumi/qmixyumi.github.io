@@ -1,0 +1,55 @@
+/* Automatic spending, per-category budgets, travellers and transport legs. globals.css loads after this, so rules start with .app. */
+.app .settlement .per-head{display:block;font-size:14px;color:var(--ink);background:#f3f6e6;border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.app .settlement .per-head strong{font-size:18px;color:var(--green)}
+.app .settle-grid{display:grid;gap:0;margin-bottom:10px}
+.app .settle-row{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.4fr;gap:8px;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px}
+.app .settle-row span:not(:first-child){text-align:right}
+.app .settle-row.settle-top{font-size:12px;color:var(--muted);padding-top:0}
+.app .settle-row .gets{color:#1f7a4d;font-weight:700}
+.app .settle-row .owes{color:#b4462a;font-weight:700}
+.app .settle-pay h3,.app .settlement .repay-list h3{font-size:14px;margin:14px 0 4px}
+.app .settle-pay .owe-line{align-items:center;gap:10px;flex-wrap:wrap}
+.app .settle-pay .owe-line .secondary{width:auto;padding:6px 12px;font-size:13px}
+.app .cat-budgets{margin-top:22px;max-width:620px}
+.app .cat-budgets-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.app .cat-budgets-head h2{font-size:18px;margin:0}
+.app .cat-budget-list{display:grid;gap:14px}
+.app .cat-budget-row{display:grid;grid-template-columns:96px 1fr;gap:4px 12px;align-items:center}
+.app .cat-budget-name{display:flex;gap:6px;align-items:center;font-size:14px}
+.app .cat-budget-bar{height:12px;border-radius:999px;background:#eceee2;overflow:hidden}
+.app .cat-budget-bar i{display:block;height:100%;border-radius:inherit;background:var(--kc,#264d3c);transition:width .3s}
+.app .cat-budget-row.over .cat-budget-bar i{background:#c2410c}
+.app .cat-budget-nums{grid-column:2;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;color:var(--muted)}
+.app .cat-budget-nums strong{color:var(--ink)}
+.app .cat-budget-row.over .cat-budget-nums strong{color:#c2410c}
+.app .cat-budget-nums small{color:var(--muted)}
+.app .cat-budget-form{border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin:14px 0}
+.app .cat-budget-form legend{font-weight:700;padding:0 6px}
+.app .cat-budget-form small{display:block;color:var(--muted);margin-top:6px}
+.app .rate-notice{margin:14px 0;display:grid;gap:8px;border-color:#e8c37a;background:#fff8e6}
+.app .rate-notice form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.app .rate-notice input{width:130px}
+.app .rate-notice .secondary{width:auto}
+.app .auto-tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#fff;background:#2f6fed;border-radius:999px;padding:1px 8px;vertical-align:middle}
+.app td b+.auto-tag{margin-top:2px}
+.app .auto-from{display:block;color:var(--muted);font-size:11px}
+.app .auto-hint{font-size:13px;background:#eef3ff;border-radius:10px;padding:10px 12px;color:#2b3d6b}
+.app .money-field .money-pair{display:grid;grid-template-columns:minmax(0,92px) minmax(0,1fr);gap:6px}
+.app .leg-form .form-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.7fr)}
+.app .money-field small{color:var(--muted);font-size:12px}
+.app .travel-link .leg-btn{cursor:pointer;font:inherit;font-size:13px;width:auto;min-height:0;box-shadow:none}
+.app .travel-link .leg-btn:hover{border-color:var(--green);color:var(--ink)}
+.app .leg-btn em{font-style:normal;font-weight:700;margin-left:4px}
+.app .leg-btn .leg-fare{color:#c2410c}
+.app .leg-btn .leg-add{color:#2f6fed;font-weight:600}
+.app .leg-form .leg-route{color:var(--muted);font-size:14px;margin:-4px 0 12px}
+.app .leg-modes{display:grid;grid-template-columns:repeat(auto-fill,minmax(72px,1fr));gap:6px;margin-bottom:14px}
+.app .leg-modes label{display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid var(--border);border-radius:12px;padding:6px 2px;font-size:12px;cursor:pointer;background:#fff;box-shadow:none}
+.app .leg-modes label i{font-style:normal;font-size:19px;line-height:1.2}
+.app .leg-modes label.on{border-color:var(--green);background:#eef4e6;font-weight:700}
+.app .leg-modes input{position:absolute;opacity:0;pointer-events:none}
+.app .leg-note{font-size:12px;color:var(--muted)}
+.app .step-node .cat-sticker{width:40px;height:40px;filter:drop-shadow(0 2px 1px #0002)}
+.app .step-node>span{display:grid;place-items:center;width:100%;height:100%}
+.app .board-icon .cat-sticker{width:24px;height:24px;filter:none}
+@media (max-width:640px){.app .leg-form .form-grid{grid-template-columns:1fr}.app .leg-modes{grid-template-columns:repeat(4,1fr)}.app .settle-row{grid-template-columns:1fr 1fr 1fr 1.3fr;font-size:13px}.app .cat-budget-row{grid-template-columns:1fr}.app .cat-budget-nums{grid-column:1}}

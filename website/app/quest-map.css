@@ -1,0 +1,62 @@
+/* Treasure-map day route. Colours follow KC's reference: parchment sheet on dark red. */
+.app .map-paper.tmap{background-color:#9c2f14;background-image:radial-gradient(circle at 6% 12%,#f3d39a 0 7px,transparent 8px),radial-gradient(circle at 93% 9%,#f3d39a 0 5px,transparent 6px),radial-gradient(circle at 97% 62%,#f3d39a 0 8px,transparent 9px),radial-gradient(circle at 3% 78%,#f3d39a 0 5px,transparent 6px),radial-gradient(circle at 70% 4%,#f3d39a 0 4px,transparent 5px),radial-gradient(circle at 30% 97%,#f3d39a 0 5px,transparent 6px);display:flex;flex-direction:column;min-height:560px;padding:16px 18px 12px;overflow:hidden}
+.app .tmap-clock{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 14px;color:#ffe9b8;margin-bottom:12px;position:relative;z-index:2}
+.app .tmap-clock-label{font-weight:800;font-size:15px;letter-spacing:2px}
+.app .tmap-clock-total{font-size:13px;opacity:.85}
+.app .tmap-digits{display:flex;align-items:flex-start}
+.app .tmap-group{display:flex;align-items:flex-start}
+.app .tmap-unit{display:grid;grid-auto-flow:column;gap:3px;position:relative;padding-bottom:16px}
+.app .tmap-unit b{display:grid;place-items:center;min-width:27px;height:40px;border-radius:6px;background:linear-gradient(#6d1d0b 0 49%,#4f1305 50% 100%);border:1px solid #c7532f;box-shadow:0 2px 0 #3a0d03;color:#fff3d0;font:700 24px/1 'Silkscreen','Noto Sans TC',monospace;font-variant-numeric:tabular-nums}
+.app .tmap-unit small{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:11px;color:#f6cf9a}
+.app .tmap-colon{font-style:normal;font:700 22px/40px 'Silkscreen',monospace;color:#f6cf9a;margin:0 4px}
+.app .tmap-clock.during .tmap-unit b{border-color:#ffc23d}
+.app .tmap-sheet-wrap{flex:1;display:flex;filter:drop-shadow(7px 8px 0 #5c1705)}
+.app .tmap-sheet{position:relative;flex:1;min-height:440px;background-color:#f6dc97;background-image:linear-gradient(transparent 0 55%,#e9c77e55 55% 100%),linear-gradient(90deg,transparent calc(25% - 2px),#fff3c9aa calc(25% - 2px) calc(25% + 2px),transparent calc(25% + 2px),transparent calc(50% - 2px),#fff3c9aa calc(50% - 2px) calc(50% + 2px),transparent calc(50% + 2px),transparent calc(75% - 2px),#fff3c9aa calc(75% - 2px) calc(75% + 2px),transparent calc(75% + 2px)),linear-gradient(transparent calc(33.3% - 2px),#fff3c9aa calc(33.3% - 2px) calc(33.3% + 2px),transparent calc(33.3% + 2px),transparent calc(66.6% - 2px),#fff3c9aa calc(66.6% - 2px) calc(66.6% + 2px),transparent calc(66.6% + 2px));clip-path:polygon(0 3%,3% 0,22% 1.2%,25% 0,28% 1.4%,47% .4%,50% 2%,53% .4%,72% 1.4%,75% 0,78% 1.2%,97% 0,100% 3%,98.8% 20%,100% 31%,98.6% 34%,100% 37%,99% 55%,100% 64%,98.6% 67%,100% 70%,99% 88%,100% 97%,97% 100%,78% 98.8%,75% 100%,72% 98.6%,53% 99.4%,50% 98%,47% 99.4%,28% 98.6%,25% 100%,22% 98.8%,3% 100%,0 97%,1.2% 80%,0 70%,1.4% 67%,0 64%,1% 45%,0 37%,1.4% 34%,0 31%,1.2% 14%)}
+.app .tmap-title{position:absolute;top:0;left:50%;transform:translateX(-50%);z-index:4;background:#fff3c9;color:#6d1d0b;padding:9px 22px 10px;border-radius:0 0 10px 10px;box-shadow:0 3px 0 #d9b25f;display:flex;gap:10px;align-items:baseline;white-space:nowrap}
+.app .tmap-title b{font-size:17px;font-weight:800;letter-spacing:1px}
+.app .tmap-title span{font-size:13px;color:#a4682a;font-family:'Silkscreen','Noto Sans TC',monospace}
+.app .tmap-decor{position:absolute;inset:0;width:100%;height:100%}
+.app .tmap-points{position:absolute;inset:52px 0 30px}
+.app .tmap-trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.app .tmap-trail path{stroke:#9c2f14;stroke-width:5;stroke-linecap:round;stroke-dasharray:.1 13}
+.app .tmap-node{position:absolute;transform:translate(-50%,-34px);z-index:3;background:none;border:0;width:112px;padding:0;text-align:center;color:#3b2a22;min-height:0;display:block}
+.app .tmap-pin{position:relative;display:block;width:68px;height:68px;margin:0 auto;transition:transform .18s}
+.app .tmap-node:hover .tmap-pin{transform:translateY(-4px) rotate(-4deg)}
+.app .cat-sticker{width:100%;height:100%;display:block;object-fit:contain;filter:drop-shadow(0 3px 2px #5c170566)}
+.app .tmap-pin i{position:absolute;left:-9px;bottom:-5px;width:28px;height:28px;border-radius:50%;background:#fffaf0;border:2.5px solid #6d1d0b;color:#6d1d0b;display:grid;place-items:center;font:800 14px/1 'Noto Sans TC',sans-serif;font-style:normal;box-shadow:0 2px 0 #6d1d0b}
+.app .tmap-node.done .tmap-pin i{background:#2f9e5b;border-color:#1c6b3b;color:#fff;box-shadow:0 2px 0 #1c6b3b}
+.app .tmap-node.selected .tmap-pin{transform:translateY(-4px) scale(1.12)}
+.app .tmap-node.selected .tmap-pin i{background:#ffc23d}
+.app .tmap-node.selected.done .tmap-pin i{background:#2f9e5b}
+.app .tmap-node b{display:block;margin-top:7px;font-size:13px;font-weight:700;line-height:1.35;background:#fff8e2e6;border-radius:6px;padding:2px 5px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.app .tmap-node small{display:inline-block;margin-top:3px;font-size:13px;font-weight:700;color:#9c2f14;background:#fff8e2cc;border-radius:5px;padding:0 5px}
+.app .tmap-none{position:absolute;inset:40% 10% auto;text-align:center;color:#8a5a2b;font-size:14px}
+.app .tmap .map-key{position:static;margin-top:12px;color:#ffe2b0;font-size:13px;flex-wrap:wrap;gap:6px 14px}
+.app .tmap-key-dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#fffaf0;border:2px solid #f6cf9a;margin-right:5px;vertical-align:-1px}
+.app .map-frame:has(.tmap){border:0;border-radius:14px}
+/* Lobby banner: smaller map, same look */
+.app .hero-map .map-paper.tmap{min-height:365px;padding:12px 14px 10px}
+.app .hero-map .tmap-sheet{min-height:0}
+.app .hero-map .tmap-title,.app .hero-map .tmap-clock-total{display:none}
+.app .hero-map .tmap-clock{margin-bottom:8px}
+.app .hero-map .tmap-unit b{min-width:21px;height:30px;font-size:18px}
+.app .hero-map .tmap-colon{line-height:30px;font-size:17px}
+.app .hero-map .tmap-points{inset:22px 0 20px}
+.app .hero-map .tmap-node{width:92px;transform:translate(-50%,-28px)}
+.app .hero-map .tmap-pin{width:52px;height:52px}
+.app .hero-map .tmap-pin i{width:23px;height:23px;font-size:12px;left:-8px}
+.app .hero-map .tmap-node b,.app .hero-map .tmap-node small{font-size:12px}
+.app .hero-map .tmap-node b{-webkit-line-clamp:1;margin-top:4px}
+@media(max-width:860px){
+ .app .map-paper.tmap{min-height:540px;padding:12px 10px 10px}
+ .app .tmap-unit b{min-width:23px;height:34px;font-size:20px}
+ .app .tmap-colon{line-height:34px;margin:0 2px}
+ .app .tmap-clock-label{width:100%;text-align:center}
+ .app .tmap-sheet{min-height:420px}
+ .app .tmap-node{width:84px;transform:translate(-50%,-28px)}
+ .app .tmap-pin{width:54px;height:54px}
+ .app .tmap-pin i{width:24px;height:24px;font-size:12px;left:-7px}
+ .app .tmap-node b,.app .tmap-node small{font-size:12px}
+ .app .tmap-title b{font-size:15px}
+}
+@media(prefers-reduced-motion:reduce){.app .tmap-pin{transition:none}}

@@ -1,133 +1,138 @@
-/* 評分圖鑑: dark navy night theme with gold accents and a faint grid (KC's HOTEL QUEST reference).
+/* 評分圖鑑 藍色模式 (.quest.q-navy, toggled by the 切換 button; 米白 stays the default): dark navy night theme with gold accents and a faint grid (KC's HOTEL QUEST reference).
    Layout stays in quest.css; this file only recolours. `.app .quest` beats quest.css and globals.css. */
-.app main.quest-active{max-width:none;background:#0b1430;background-image:linear-gradient(#ffffff07 1px,transparent 1px),linear-gradient(90deg,#ffffff07 1px,transparent 1px);background-size:24px 24px;min-height:100vh;box-sizing:border-box}
-.app .quest{
+.app main.quest-active:has(.quest.q-navy){max-width:none;background:#0b1430;background-image:linear-gradient(#ffffff07 1px,transparent 1px),linear-gradient(90deg,#ffffff07 1px,transparent 1px);background-size:24px 24px;min-height:100vh;box-sizing:border-box}
+.app .quest.q-navy{
  --bg:#101b3f;--card:#16234c;--card2:#1a2a58;--text:#e9edf9;--muted:#93a0c7;--line:#2f4078;--gold:#eab54a;--gold-d:#f3c75e;--btn:#1b2957;--btn-line:#3a4d88;--btn-shadow:#08102a;
  --green:#3cb85c;--green-d:#1f7a35;--blue:#6ea0e6;--blue-d:#28507d;--red:#ef6a5a;--red-d:#9a2f23;--purple:#b896f5;
  color:var(--text);background-color:var(--bg);
  background-image:linear-gradient(#ffffff08 1px,transparent 1px),linear-gradient(90deg,#ffffff08 1px,transparent 1px);background-size:24px 24px;
  border-color:#24346a;box-shadow:0 0 0 1px #0006,0 18px 40px #0005
 }
-.app .quest ::selection{background:#eab54a55}
+.app .quest.q-navy ::selection{background:#eab54a55}
 
 /* Category switch and header */
-.app .quest .q-kinds{border-bottom-color:var(--line)}
-.app .quest .q-kinds button{background:var(--card);border-color:var(--btn-line);color:var(--muted)}
-.app .quest .q-kinds button.on{background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;color:#1b1503}
-.app .quest .q-pixel-title{color:#f3c14e;text-shadow:2px 2px 0 #6b4a08,-1px -1px 0 #3a2a06,1px -1px 0 #3a2a06,-1px 1px 0 #3a2a06,0 0 18px #f3c14e33}
-.app .quest.qk-hotel .q-brand p{color:#c9d1ea}
-.app .quest.qk-hotel .q-logo>svg{fill:#f2cf6e;color:#8a6414}
-.app .quest .q-head-stats span,.app .quest .q-chip-stat{background:var(--card);border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow);color:var(--muted)}
-.app .quest .q-stripe{background:repeating-linear-gradient(-45deg,#f0c043 0 12px,#101b3f 12px 24px);border-color:#b98c25}
+.app .quest.q-navy .q-kinds{border-bottom-color:var(--line)}
+.app .quest.q-navy .q-kinds button{background:var(--card);border-color:var(--btn-line);color:var(--muted)}
+.app .quest.q-navy .q-kinds button.on{background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;color:#1b1503}
+.app .quest.q-navy .q-pixel-title{color:#f3c14e;text-shadow:2px 2px 0 #6b4a08,-1px -1px 0 #3a2a06,1px -1px 0 #3a2a06,-1px 1px 0 #3a2a06,0 0 18px #f3c14e33}
+.app .quest.q-navy.qk-hotel .q-brand p{color:#c9d1ea}
+.app .quest.q-navy.qk-hotel .q-logo>svg{fill:#f2cf6e;color:#8a6414}
+.app .quest.q-navy .q-head-stats span,.app .quest.q-navy .q-chip-stat{background:var(--card);border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow);color:var(--muted)}
+.app .quest.q-navy .q-stripe{background:repeating-linear-gradient(-45deg,#f0c043 0 12px,#101b3f 12px 24px);border-color:#b98c25}
 
 /* Buttons */
-.app .quest .q-btn{color:var(--text);background:var(--btn);border-color:var(--btn-line);box-shadow:0 3px 0 var(--btn-shadow)}
-.app .quest .q-btn.q-green{color:#fff;background:linear-gradient(#4cad55,#38923f);border-color:#2c7a33;box-shadow:0 3px 0 #164d22}
-.app .quest .q-btn.q-blue{color:#fff;background:linear-gradient(#4b7fba,#386a9f);border-color:#2f5b89;box-shadow:0 3px 0 #1a3555}
-.app .quest .q-btn.q-red{color:#fff;background:linear-gradient(#df5a49,#c84434);border-color:#ad3a2c;box-shadow:0 3px 0 #6a1f16}
-.app .quest .q-btn.q-gold{color:#1b1503;background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;box-shadow:0 3px 0 #7a5810}
-.app .quest .q-tabs .q-btn.q-green{color:#1b1503;background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;box-shadow:0 3px 0 #7a5810}
-.app .quest .q-newfolder{background:#221d4a;border-color:#7d63c9;color:var(--purple)}
-.app .quest .q-sort{border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow)}
-.app .quest .q-sort button{background:var(--card);color:var(--muted)}
-.app .quest .q-sort button.on{background:linear-gradient(#4b7fba,#386a9f);color:#fff}
+.app .quest.q-navy .q-btn{color:var(--text);background:var(--btn);border-color:var(--btn-line);box-shadow:0 3px 0 var(--btn-shadow)}
+.app .quest.q-navy .q-btn.q-green{color:#fff;background:linear-gradient(#4cad55,#38923f);border-color:#2c7a33;box-shadow:0 3px 0 #164d22}
+.app .quest.q-navy .q-btn.q-blue{color:#fff;background:linear-gradient(#4b7fba,#386a9f);border-color:#2f5b89;box-shadow:0 3px 0 #1a3555}
+.app .quest.q-navy .q-btn.q-red{color:#fff;background:linear-gradient(#df5a49,#c84434);border-color:#ad3a2c;box-shadow:0 3px 0 #6a1f16}
+.app .quest.q-navy .q-btn.q-gold{color:#1b1503;background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;box-shadow:0 3px 0 #7a5810}
+.app .quest.q-navy .q-tabs .q-btn.q-green{color:#1b1503;background:linear-gradient(#f6cf6a,#e2ab31);border-color:#b88820;box-shadow:0 3px 0 #7a5810}
+.app .quest.q-navy .q-newfolder{background:#221d4a;border-color:#7d63c9;color:var(--purple)}
+.app .quest.q-navy .q-sort{border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow)}
+.app .quest.q-navy .q-sort button{background:var(--card);color:var(--muted)}
+.app .quest.q-navy .q-sort button.on{background:linear-gradient(#4b7fba,#386a9f);color:#fff}
 
 /* Chips, tags, badges, stars */
-.app .quest .q-fchip{background:var(--card);border-color:var(--btn-line)}
-.app .quest .q-fchip small,.app .quest .q-count,.app .quest .q-mini-label{background:#0f1938;border-color:var(--btn-line);color:var(--muted)}
-.app .quest .q-fchip.on{background:#2a3a72;border-color:var(--gold);box-shadow:inset 0 -2px 0 #b88820}
-.app .quest .q-stars{color:#3a4775}.app .quest .q-stars i.on{color:#f3c75e}
-.app .quest .q-tag{background:#2a2410;border-color:#9b7a22;color:var(--gold-d)}
-.app .quest .q-mini-tag,.app .quest .q-low{background:#241d4d;border-color:#6d55b5;color:var(--purple)}
-.app .quest .q-note{background:#0f1938;border-color:var(--line)}
-.app .quest .q-mname,.app .quest .q-seg-metric>div,.app .quest .q-line{color:#c3cbe6}
-.app .quest .q-thumb{border-color:var(--line)}
-.app .quest .q-level-chips button,.app .quest .q-seg-toggle button{background:#1d1a45;border-color:#5b4a9e;color:var(--purple);box-shadow:0 2px 0 #0d0b26}
-.app .quest .q-seg-toggle{border-color:#5b4a9e}
-.app .quest .q-seasons span,.app .quest .q-pick.seasons button{background:#0f1938}
-.app .quest .spring{color:#5cc56a}.app .quest .summer{color:#ff7a6b}.app .quest .autumn{color:#f2a646}.app .quest .winter{color:#78a8f0}
+.app .quest.q-navy .q-fchip{background:var(--card);border-color:var(--btn-line)}
+.app .quest.q-navy .q-fchip small,.app .quest.q-navy .q-count,.app .quest.q-navy .q-mini-label{background:#0f1938;border-color:var(--btn-line);color:var(--muted)}
+.app .quest.q-navy .q-fchip.on{background:#2a3a72;border-color:var(--gold);box-shadow:inset 0 -2px 0 #b88820}
+.app .quest.q-navy .q-stars{color:#3a4775}.app .quest.q-navy .q-stars i.on{color:#f3c75e}
+.app .quest.q-navy .q-tag{background:#2a2410;border-color:#9b7a22;color:var(--gold-d)}
+.app .quest.q-navy .q-mini-tag,.app .quest.q-navy .q-low{background:#241d4d;border-color:#6d55b5;color:var(--purple)}
+.app .quest.q-navy .q-note{background:#0f1938;border-color:var(--line)}
+.app .quest.q-navy .q-mname,.app .quest.q-navy .q-seg-metric>div,.app .quest.q-navy .q-line{color:#c3cbe6}
+.app .quest.q-navy .q-thumb{border-color:var(--line)}
+.app .quest.q-navy .q-level-chips button,.app .quest.q-navy .q-seg-toggle button{background:#1d1a45;border-color:#5b4a9e;color:var(--purple);box-shadow:0 2px 0 #0d0b26}
+.app .quest.q-navy .q-seg-toggle{border-color:#5b4a9e}
+.app .quest.q-navy .q-seasons span,.app .quest.q-navy .q-pick.seasons button{background:#0f1938}
+.app .quest.q-navy .spring{color:#5cc56a}.app .quest.q-navy .summer{color:#ff7a6b}.app .quest.q-navy .autumn{color:#f2a646}.app .quest.q-navy .winter{color:#78a8f0}
 
 /* Sliders, segments, bars */
-.app .quest input.q-slider,.app .quest .q-slider{border-color:#3a4d88;background:linear-gradient(90deg,var(--c) 0 var(--p),var(--rest,#26335f) var(--p) 100%)}
-.app .quest .q-slider.q-unset{background:var(--rest,#26335f)}
-.app .quest .q-segments>*{background:#202d5a;border-color:#34477f;box-shadow:inset 0 2px 0 #ffffff10}
-.app .quest .q-segments>.on{background:linear-gradient(color-mix(in srgb,var(--c) 75%,#fff),var(--c));border-color:color-mix(in srgb,var(--c) 70%,#000)}
-.app .quest .q-gold-bar{background:#26335f;border-color:#3a4d88}
+.app .quest.q-navy input.q-slider,.app .quest.q-navy .q-slider{border-color:#3a4d88;background:linear-gradient(90deg,var(--c) 0 var(--p),var(--rest,#26335f) var(--p) 100%)}
+.app .quest.q-navy .q-slider.q-unset{background:var(--rest,#26335f)}
+.app .quest.q-navy .q-segments>*{background:#202d5a;border-color:#34477f;box-shadow:inset 0 2px 0 #ffffff10}
+.app .quest.q-navy .q-segments>.on{background:linear-gradient(color-mix(in srgb,var(--c) 75%,#fff),var(--c));border-color:color-mix(in srgb,var(--c) 70%,#000)}
+.app .quest.q-navy .q-gold-bar{background:#26335f;border-color:#3a4d88}
 
 /* Cards and panels */
-.app .quest .q-food-card{background:var(--card);box-shadow:0 4px 0 #08102a}
-.app .quest .q-spot-card,.app .quest .q-group-bar,.app .quest .q-rank-row{background:var(--card);border-color:var(--line);box-shadow:0 4px 0 #08102a}
-.app .quest .q-spot-card.ride{border-color:#7a3a4a}
-.app .quest .q-seg-list{border-top-color:var(--line)}
-.app .quest .q-icon-btns button,.app .quest .q-x,.app .quest .q-close{background:#0f1938;border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow)}
-.app .quest .q-icon-btns .blue{color:var(--blue)}.app .quest .q-icon-btns .red{color:var(--red)}
-.app .quest .q-panel{background:#131f46;border-color:#2c3c74;border-radius:6px;box-shadow:0 10px 30px #0004}
-.app .quest .q-panel::before,.app .quest .q-panel::after{border-color:var(--gold)}
-.app .quest .q-panel-title span,.app .quest .q-sub-title span{color:#9aa6cf}
-.app .quest .q-folder-box,.app .quest .q-stat-card,.app .quest .q-hotel-fields label{background:#16244f;border-color:#2c3c74}
-.app .quest .q-stat-card.off{background:#121c40;border-color:#3a4a80}
-.app .quest .q-folder-tabs button{background:#1b2957;border-color:var(--btn-line);color:var(--muted);box-shadow:0 2px 0 var(--btn-shadow)}
-.app .quest .q-folder-tabs button.on{background:linear-gradient(#f6cf6a,#e2ab31);color:#1b1503;border-color:#b88820}
-.app .quest .q-hotel-item{background:#16244f;border-color:#2c3c74}
-.app .quest .q-hotel-item.on{background:#1d2b5c;border-color:#e7b94b;box-shadow:0 0 0 1px #e7b94b55,0 3px 0 #7a5810}
-.app .quest .q-grade-chip{background:#163a28;border-color:#3d9a43;color:#8fe39c}
-.app .quest .q-use,.app .quest .q-dash-tag{background:#0f1938;border-color:#4a5c96;color:var(--text)}
-.app .quest .q-use.on{background:#163a28;border-color:#3d9a43}
-.app .quest .q-breakfast{border-color:#e2b54c;background:#0a1128}
-.app .quest .q-photo-empty{background:#0f1938}
-.app .quest .q-photo-label{background:#131f46ee;border-color:#e2b54c;color:var(--text)}
-.app .quest .q-hotel-settings{border-top-color:var(--line)}
-.app .quest .q-hotel-settings summary{color:var(--muted)}
-.app .quest .q-empty{background:#131f4699;border-color:var(--line)}
-.app .quest .q-notice{background:#2a2410;border-color:#9b7a22;color:var(--text)}
-.app .quest .q-downloads a{color:#9cc2ff}
-.app .quest .flash{outline-color:#f3c14e}
+.app .quest.q-navy .q-food-card{background:var(--card);box-shadow:0 4px 0 #08102a}
+.app .quest.q-navy .q-spot-card,.app .quest.q-navy .q-group-bar,.app .quest.q-navy .q-rank-row{background:var(--card);border-color:var(--line);box-shadow:0 4px 0 #08102a}
+.app .quest.q-navy .q-spot-card.ride{border-color:#7a3a4a}
+.app .quest.q-navy .q-seg-list{border-top-color:var(--line)}
+.app .quest.q-navy .q-icon-btns button,.app .quest.q-navy .q-x,.app .quest.q-navy .q-close{background:#0f1938;border-color:var(--btn-line);box-shadow:0 2px 0 var(--btn-shadow)}
+.app .quest.q-navy .q-icon-btns .blue{color:var(--blue)}.app .quest.q-navy .q-icon-btns .red{color:var(--red)}
+.app .quest.q-navy .q-panel{background:#131f46;border-color:#2c3c74;border-radius:6px;box-shadow:0 10px 30px #0004}
+.app .quest.q-navy .q-panel::before,.app .quest.q-navy .q-panel::after{border-color:var(--gold)}
+.app .quest.q-navy .q-panel-title span,.app .quest.q-navy .q-sub-title span{color:#9aa6cf}
+.app .quest.q-navy .q-folder-box,.app .quest.q-navy .q-stat-card,.app .quest.q-navy .q-hotel-fields label{background:#16244f;border-color:#2c3c74}
+.app .quest.q-navy .q-stat-card.off{background:#121c40;border-color:#3a4a80}
+.app .quest.q-navy .q-folder-tabs button{background:#1b2957;border-color:var(--btn-line);color:var(--muted);box-shadow:0 2px 0 var(--btn-shadow)}
+.app .quest.q-navy .q-folder-tabs button.on{background:linear-gradient(#f6cf6a,#e2ab31);color:#1b1503;border-color:#b88820}
+.app .quest.q-navy .q-hotel-item{background:#16244f;border-color:#2c3c74}
+.app .quest.q-navy .q-hotel-item.on{background:#1d2b5c;border-color:#e7b94b;box-shadow:0 0 0 1px #e7b94b55,0 3px 0 #7a5810}
+.app .quest.q-navy .q-grade-chip{background:#163a28;border-color:#3d9a43;color:#8fe39c}
+.app .quest.q-navy .q-use,.app .quest.q-navy .q-dash-tag{background:#0f1938;border-color:#4a5c96;color:var(--text)}
+.app .quest.q-navy .q-use.on{background:#163a28;border-color:#3d9a43}
+.app .quest.q-navy .q-breakfast{border-color:#e2b54c;background:#0a1128}
+.app .quest.q-navy .q-photo-empty{background:#0f1938}
+.app .quest.q-navy .q-photo-label{background:#131f46ee;border-color:#e2b54c;color:var(--text)}
+.app .quest.q-navy .q-hotel-settings{border-top-color:var(--line)}
+.app .quest.q-navy .q-hotel-settings summary{color:var(--muted)}
+.app .quest.q-navy .q-empty{background:#131f4699;border-color:var(--line)}
+.app .quest.q-navy .q-notice{background:#2a2410;border-color:#9b7a22;color:var(--text)}
+.app .quest.q-navy .q-downloads a{color:#9cc2ff}
+.app .quest.q-navy .flash{outline-color:#f3c14e}
 
 /* Inputs (panels and dialogs) */
-.app .quest .q-create input,.app .quest .q-form input:not(.q-slider):not([type=color]),.app .quest .q-form select,.app .quest .q-form textarea,.app .quest .q-hotel-side textarea,.app .quest .q-move select,.app .quest .q-budget-line select,.app .quest .q-budget-line input{background:#0d1634;border-color:#34477f;color:var(--text)}
-.app .quest .q-hotel-fields input{background:transparent;border:0;color:var(--text)}
-.app .quest .q-hotel-fields select.q-cur{background:transparent;color:var(--gold)}
-.app .quest select option{background:#131f46;color:var(--text)}
-.app .quest input::placeholder,.app .quest textarea::placeholder{color:#6b78a3}
-.app .quest .q-create input:focus,.app .quest .q-form input:focus,.app .quest .q-form select:focus,.app .quest .q-form textarea:focus,.app .quest .q-hotel-side textarea:focus{outline:2px solid #eab54a;border-color:#eab54a}
+.app .quest.q-navy .q-create input,.app .quest.q-navy .q-form input:not(.q-slider):not([type=color]),.app .quest.q-navy .q-form select,.app .quest.q-navy .q-form textarea,.app .quest.q-navy .q-hotel-side textarea,.app .quest.q-navy .q-move select,.app .quest.q-navy .q-budget-line select,.app .quest.q-navy .q-budget-line input{background:#0d1634;border-color:#34477f;color:var(--text)}
+.app .quest.q-navy .q-hotel-fields input{background:transparent;border:0;color:var(--text)}
+.app .quest.q-navy .q-hotel-fields select.q-cur{background:transparent;color:var(--gold)}
+.app .quest.q-navy select option{background:#131f46;color:var(--text)}
+.app .quest.q-navy input::placeholder,.app .quest.q-navy textarea::placeholder{color:#6b78a3}
+.app .quest.q-navy .q-create input:focus,.app .quest.q-navy .q-form input:focus,.app .quest.q-navy .q-form select:focus,.app .quest.q-navy .q-form textarea:focus,.app .quest.q-navy .q-hotel-side textarea:focus{outline:2px solid #eab54a;border-color:#eab54a}
 
 /* Dialogs */
-.app .q-modal.quest{background:#121d42;border-color:#2f4078;box-shadow:0 5px 0 #08102a,0 20px 60px #000a;color:var(--text)}
-.app .q-modal.quest::backdrop{background:#050a1ccc}
-.app .quest .q-form-title{border-bottom-color:var(--line);color:var(--text)}
-.app .quest .q-form label,.app .quest .q-field>span:first-child{color:var(--gold-d)}
-.app .quest .q-form-actions{background:#121d42;border-top-color:var(--line)}
-.app .quest .q-pick button{background:#1b2957;border-color:var(--btn-line);color:var(--text);box-shadow:0 2px 0 var(--btn-shadow)}
-.app .quest .q-pick button.on{background:linear-gradient(#5a8fd6,#3a6db3);border-color:#25528f;color:#fff}
-.app .quest .q-pick.seasons button{color:var(--text)}
-.app .quest .q-pick.seasons .on.spring{background:#2f8d3c}.app .quest .q-pick.seasons .on.summer{background:#d2473a}.app .quest .q-pick.seasons .on.autumn{background:#d1841e}.app .quest .q-pick.seasons .on.winter{background:#3a6fc0}
-.app .quest .q-pick.q-type-pick button.on.ride{background:linear-gradient(#e0625a,#bf3f37);border-color:#8c2a24}
-.app .quest .q-pick.q-type-pick button.on.spot{background:linear-gradient(#5a8fd6,#3a6db3)}
-.app .quest .q-dash{border-top-color:var(--line)}
+.app .q-modal.quest.q-navy{background:#121d42;border-color:#2f4078;box-shadow:0 5px 0 #08102a,0 20px 60px #000a;color:var(--text)}
+.app .q-modal.quest.q-navy::backdrop{background:#050a1ccc}
+.app .quest.q-navy .q-form-title{border-bottom-color:var(--line);color:var(--text)}
+.app .quest.q-navy .q-form label,.app .quest.q-navy .q-field>span:first-child{color:var(--gold-d)}
+.app .quest.q-navy .q-form-actions{background:#121d42;border-top-color:var(--line)}
+.app .quest.q-navy .q-pick button{background:#1b2957;border-color:var(--btn-line);color:var(--text);box-shadow:0 2px 0 var(--btn-shadow)}
+.app .quest.q-navy .q-pick button.on{background:linear-gradient(#5a8fd6,#3a6db3);border-color:#25528f;color:#fff}
+.app .quest.q-navy .q-pick.seasons button{color:var(--text)}
+.app .quest.q-navy .q-pick.seasons .on.spring{background:#2f8d3c}.app .quest.q-navy .q-pick.seasons .on.summer{background:#d2473a}.app .quest.q-navy .q-pick.seasons .on.autumn{background:#d1841e}.app .quest.q-navy .q-pick.seasons .on.winter{background:#3a6fc0}
+.app .quest.q-navy .q-pick.q-type-pick button.on.ride{background:linear-gradient(#e0625a,#bf3f37);border-color:#8c2a24}
+.app .quest.q-navy .q-pick.q-type-pick button.on.spot{background:linear-gradient(#5a8fd6,#3a6db3)}
+.app .quest.q-navy .q-dash{border-top-color:var(--line)}
 
 /* Ride tag and the 1-10 slider list in the spot form */
-.app .quest .q-type-tag{display:inline-block;margin-left:8px;vertical-align:2px;border:1.5px solid #c9554b;background:#3a1c2a;color:#ff9d92;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
-.app .quest .q-slider-list{display:grid;gap:12px}
-.app .quest .q-slide-row{display:grid;grid-template-columns:20px 112px minmax(0,1fr) 52px;align-items:center;gap:10px;font-size:13px}
-.app .quest .q-slide-row .q-micon{display:flex;color:var(--c)}
-.app .quest .q-slide-row .q-mname{font-weight:700;color:#d9def0}
-.app .quest .q-slide-row .q-num{text-align:right;font-size:13px}
-.app .quest .q-down{font-style:normal;color:#9cc2ff;margin-left:4px;font-weight:800}
+.app .quest.q-navy .q-type-tag{display:inline-block;margin-left:8px;vertical-align:2px;border:1.5px solid #c9554b;background:#3a1c2a;color:#ff9d92;border-radius:4px;padding:0 6px;font-size:11px;font-weight:700}
+.app .quest.q-navy .q-slider-list{display:grid;gap:12px}
+.app .quest.q-navy .q-slide-row{display:grid;grid-template-columns:20px 112px minmax(0,1fr) 52px;align-items:center;gap:10px;font-size:13px}
+.app .quest.q-navy .q-slide-row .q-micon{display:flex;color:var(--c)}
+.app .quest.q-navy .q-slide-row .q-mname{font-weight:700;color:#d9def0}
+.app .quest.q-navy .q-slide-row .q-num{text-align:right;font-size:13px}
+.app .quest.q-navy .q-down{font-style:normal;color:#9cc2ff;margin-left:4px;font-weight:800}
 
 /* Budget link: only inside dialogs, closed by default */
-.app .quest .q-budget-more{border:1.5px dashed var(--line);border-radius:5px;padding:8px 12px;background:#0f1938}
-.app .quest .q-budget-more summary{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted)}
-.app .quest .q-budget-more summary small{margin-left:auto;font-weight:400;font-size:12px}
-.app .quest .q-budget-more[open] summary{margin-bottom:10px}
-.app .quest .q-budget-line{background:#0f1938;border-color:var(--line);color:var(--text);margin:0}
-.app .quest .q-budget-line.on{background:#11301f;border-color:#3d9a43}
-.app .quest .q-budget-line.on small{color:#8fe39c}
-.app .quest .q-field>.q-muted{margin:0}
+.app .quest.q-navy .q-budget-more{border:1.5px dashed var(--line);border-radius:5px;padding:8px 12px;background:#0f1938}
+.app .quest.q-navy .q-budget-more summary{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:var(--muted)}
+.app .quest.q-navy .q-budget-more summary small{margin-left:auto;font-weight:400;font-size:12px}
+.app .quest.q-navy .q-budget-more[open] summary{margin-bottom:10px}
+.app .quest.q-navy .q-budget-line{background:#0f1938;border-color:var(--line);color:var(--text);margin:0}
+.app .quest.q-navy .q-budget-line.on{background:#11301f;border-color:#3d9a43}
+.app .quest.q-navy .q-budget-line.on small{color:#8fe39c}
+.app .quest.q-navy .q-field>.q-muted{margin:0}
 
 @media(max-width:760px){
- .app .quest .q-slide-row{grid-template-columns:18px 96px minmax(0,1fr) 44px;gap:8px}
+ .app .quest.q-navy .q-slide-row{grid-template-columns:18px 96px minmax(0,1fr) 44px;gap:8px}
 }
 /* Page around the atlas: keep it navy down to the bottom and readable status text. */
-body:has(.app main.quest-active),.app:has(main.quest-active) .workspace{background-color:#0b1430}
-.app main.quest-active .pwa-strip .status-line{color:#93a0c7}
-.app main.quest-active>footer,.app main.quest-active>footer *{color:#6b78a3}
+body:has(.quest.q-navy),.app:has(.quest.q-navy) .workspace{background-color:#0b1430}
+.app main.quest-active:has(.quest.q-navy) .pwa-strip .status-line{color:#93a0c7}
+.app main.quest-active:has(.quest.q-navy)>footer,.app main.quest-active:has(.quest.q-navy)>footer *{color:#6b78a3}
+
+/* Look switch (both looks) */
+.app .quest .q-kinds .q-look{margin-left:8px;border-style:dashed;font-size:12px;padding:5px 12px}
+.app .quest.q-navy .q-kinds .q-look{border-color:#4a5c96;color:#c9d1ea}
+@media(max-width:760px){.app .quest .q-kinds .q-look{margin-left:auto}}

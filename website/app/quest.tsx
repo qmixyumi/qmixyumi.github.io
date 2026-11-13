@@ -1,10 +1,11 @@
 'use client';
 import Photo from './photos';
 import {useState,useRef,useEffect,CSSProperties,ReactNode} from 'react';
-import {MapPin,Sofa,Leaf,Moon,BadgeDollarSign,Coffee,Star,Eye,Tag,Soup,Flame,Candy,Folder,Pencil,Trash2,Clock,Ticket,LayoutGrid,Trophy,SlidersHorizontal,Plus,Shield,Gem,X,Download,BedDouble,Mountain,UtensilsCrossed} from 'lucide-react';
-import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor} from './quest-model';
+import {MapPin,Sofa,Leaf,Moon,BadgeDollarSign,Coffee,Star,Eye,Tag,Soup,Flame,Candy,Folder,Pencil,Trash2,Clock,Ticket,LayoutGrid,Trophy,SlidersHorizontal,Plus,Shield,Gem,X,Download,BedDouble,Mountain,UtensilsCrossed,Zap,Orbit,BatteryLow,Users,Camera,Wallet} from 'lucide-react';
+import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor,isRide,metricsFor} from './quest-model';
 import {saveValue,readValue,ago} from './drafts';
 import './quest.css';
+import './quest-navy.css';
 import type {Stop,Trip,Data} from './model';
 import {amount} from './model';
 import {questLink,questCharges,hotelNights,questCurrency} from './budget';
@@ -22,15 +23,18 @@ const FOOD_TYPES=['小食','主食','甜品','飲品','其他'];
 const SEASON_CLASS:Record<string,string>={春:'spring',夏:'summer',秋:'autumn',冬:'winter'};
 const hotelIcons:Record<string,ReactNode>={location:<MapPin/>,comfort:<Sofa/>,environment:<Leaf/>,quiet:<Moon/>,value:<BadgeDollarSign/>,breakfast:<Coffee/>};
 const foodIcons:Record<string,ReactNode>={taste:<Star/>,appearance:<Eye/>,value:<Tag/>,portion:<Soup/>};
+const spotIcons:Record<string,ReactNode>={view:<Mountain/>,crowd:<Users/>,photo:<Camera/>,thrill:<Zap/>,queue:<Clock/>,gforce:<Orbit/>,stamina:<BatteryLow/>,experience:<Star/>};
 const DRAFT='quest';
 
 /** Read-only row of five stars derived from a 0–10 score. */
 function Stars({value}:{value:number|null|undefined}){const n=toStars(value);return <span className="q-stars" aria-label={typeof value==='number'?`${n} 星`:'未評分'}>{[1,2,3,4,5].map(i=><i key={i} className={i<=n?'on':''}>★</i>)}</span>}
 /** 0–10 slider that only saves when the finger or mouse is released. */
-function Slider({value,color,label,onChange,rest,disabled}:{value:number|null|undefined;color:string;label:string;onChange:(v:number)=>void;rest?:string;disabled?:boolean}){
+function Slider({value,color,label,onChange,rest,disabled,min=0}:{value:number|null|undefined;color:string;label:string;onChange:(v:number)=>void;rest?:string;disabled?:boolean;min?:number}){
  const [local,setLocal]=useState<number|null>(null);const shown=local??(typeof value==='number'?value:null);
  function done(){if(local!==null&&local!==value)onChange(local);setLocal(null)}
- return <input type="range" disabled={disabled} className={'q-slider'+(shown===null?' q-unset':'')} min={0} max={10} step={1} aria-label={label} value={shown??0} style={{'--c':color,'--p':((shown??0)*10)+'%',...(rest?{'--rest':rest}:{})} as CSSProperties} onChange={e=>setLocal(Number(e.target.value))} onPointerUp={done} onKeyUp={done} onBlur={done} onTouchEnd={done}/>
+ // With min above 0, a tap on an unset bar at its lowest point still records that score.
+ function tap(){if(local===null&&typeof value!=='number'&&min>0&&!disabled)onChange(min);done()}
+ return <input type="range" disabled={disabled} className={'q-slider'+(shown===null?' q-unset':'')} min={min} max={10} step={1} aria-label={label} value={shown??min} style={{'--c':color,'--p':(Math.max(0,(shown??min)-min)/(10-min)*100)+'%',...(rest?{'--rest':rest}:{})} as CSSProperties} onChange={e=>setLocal(Number(e.target.value))} onPointerUp={tap} onKeyUp={done} onBlur={done} onTouchEnd={done}/>
 }
 /** Ten clickable cells; tapping the current top cell steps one down so 0 is reachable. */
 function Segments({value,color,label,onChange}:{value:number|null|undefined;color:string;label:string;onChange?:(v:number)=>void}){const v=typeof value==='number'?Math.round(value):0;return <span className="q-segments" role={onChange?'radiogroup':undefined} aria-label={label} style={{'--c':color} as CSSProperties}>{Array.from({length:10},(_,i)=>i+1).map(n=>onChange?<button type="button" key={n} role="radio" aria-checked={v===n} aria-label={`${label} ${n} 分`} className={n<=v?'on':''} onClick={()=>onChange(v===n?n-1:n)}/>:<i key={n} className={n<=v?'on':''}/>)}</span>}
@@ -67,6 +71,8 @@ function BudgetLine({entry,data,trips,onChange}:{entry:QuestEntry;data?:Data;tri
   <small>{text}</small>
  </div>
 }
+/** Budget link tucked into a closed section so the rating looks clean in screenshots. */
+function BudgetMore(p:{entry:QuestEntry;data?:Data;trips:Trip[];onChange:(p:Partial<QuestEntry>)=>void}){if(!p.data)return null;return <details className="q-budget-more"><summary><Wallet/> 記入旅費設定<small>{p.entry.trip==='none'?'唔計入':p.entry.trip?p.trips.find(t=>t.id===p.entry.trip)?.name||'自動':'自動'}</small></summary><BudgetLine {...p}/></details>}
 
 export default function Quest({value,onChange,stops=[],tripName='',focus='',trips=[],tripId='',budgetData}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;trips?:Trip[];tripId?:string;budgetData?:Data;person?:string;onPerson?:(p:string)=>void;focus?:string}){
  const q=value||emptyQuest();
@@ -100,7 +106,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
  function importStops(){if(!importable.length)return;commit(n=>{for(const s of importable)n.entries.push({...stopToEntry(s,kind,tripName),folder:targetFolder,...(tripId&&tripId!=='empty'?{trip:tripId,stop:s.id}:{})})});setNotice(`已由「${tripName}」加入 ${importable.length} 項；原本喺收藏圖鑑嘅詳細評分已一併轉換。`)}
  async function photo(file:File){if(!draft)return;const request=++photoRequest.current;const entryId=draft.id;setPhotoBusy(true);try{const image=await compressPhoto(file);if(request===photoRequest.current){edited.current=true;setDraft(d=>d?.id===entryId?{...d,photo:image}:d)}}catch(e){if(request===photoRequest.current)setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{if(request===photoRequest.current)setPhotoBusy(false)}}
  async function hotelPhotoChange(file:File,id:string){setPhotoBusy(true);try{const image=await compressPhoto(file);patch(id,e=>{e.photo=image})}catch(e){setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{setPhotoBusy(false)}}
- async function exportRanking(){setExporting(true);setNotice('');try{const {exportQuestRanking}=await import('./quest-export');const files=await exportQuestRanking({kind,title:theme.title,folder:folder==='all'?'全部':folder==='none'?'未分類':folders.find(f=>f.id===folder)?.name||'',entries:ranked,metrics:kindMetrics,dark:false});setExports(files.map(f=>({url:URL.createObjectURL(f.blob),name:f.name})));setNotice('排行榜 PNG 已準備好，按下面連結下載；每頁最多 20 項。')}catch(e){setNotice(e instanceof Error?e.message:'圖片匯出失敗')}finally{setExporting(false)}}
+ async function exportRanking(){setExporting(true);setNotice('');try{const {exportQuestRanking}=await import('./quest-export');const files=await exportQuestRanking({kind,title:theme.title,folder:folder==='all'?'全部':folder==='none'?'未分類':folders.find(f=>f.id===folder)?.name||'',entries:ranked,metrics:kindMetrics,dark:true});setExports(files.map(f=>({url:URL.createObjectURL(f.blob),name:f.name})));setNotice('排行榜 PNG 已準備好，按下面連結下載；每頁最多 20 項。')}catch(e){setNotice(e instanceof Error?e.message:'圖片匯出失敗')}finally{setExporting(false)}}
  const folderName=(id:string)=>folders.find(f=>f.id===id)?.name||'未分類';
 
  // ---------- Shared header ----------
@@ -143,15 +149,15 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   {!items.length?empty():<div className="q-grid">{cards.map(foodCard)}</div>}</>;
 
  // ---------- Spot ----------
- function spotCard(e:QuestEntry){const t=score(e),g=questGrade(t);return <article className="q-spot-card" id={'quest-'+e.id} key={e.id}>
-  <header><Badge grade={g}/><h3>{e.name}</h3><span className="q-icon-btns"><button className="blue" aria-label={'編輯 '+e.name} onClick={()=>openDraft(structuredClone(e))}><Pencil/></button><button className="red" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><Trash2/></button></span></header>
+ function spotCard(e:QuestEntry){const t=score(e),g=questGrade(t),ms=metricsFor(e,kindMetrics);return <article className={'q-spot-card'+(isRide(e)?' ride':'')} id={'quest-'+e.id} key={e.id}>
+  <header><Badge grade={g}/><h3>{e.name}{isRide(e)&&<span className="q-type-tag">機動遊戲</span>}</h3><span className="q-icon-btns"><button className="blue" aria-label={'編輯 '+e.name} onClick={()=>openDraft(structuredClone(e))}><Pencil/></button><button className="red" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><Trash2/></button></span></header>
   {e.region&&<p className="q-line"><MapPin/> {e.region}</p>}
   {e.seasons.length>0&&<p className="q-seasons">{e.seasons.map(s=><span key={s} className={SEASON_CLASS[s]}>{s}</span>)}</p>}
-  {e.ticket&&<p className="q-line"><Ticket/><span className="q-mini-label">景區</span>{e.ticket}</p>}
+  {e.ticket&&<p className="q-line"><Ticket/><span className="q-mini-label">門票</span>{e.ticket}</p>}
   {e.ride&&<p className="q-line"><Ticket/><span className="q-mini-label">項目</span>{e.ride}</p>}
   {e.duration&&<p className="q-line"><Clock/><span className="q-mini-label">時長</span>{e.duration}</p>}
   {e.photo&&<Photo className="q-thumb" src={e.photo} alt={e.name+' 照片'}/>}
-  <div className="q-seg-list">{kindMetrics.map(m=><div className="q-seg-metric" key={m.id}><div><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><b className="q-num">{num(mine(e)[m.id],0)}/10</b></div><Segments label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/></div>)}</div>
+  <div className="q-seg-list">{ms.map(m=><div className="q-seg-metric" key={m.id}><div><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><b className="q-num">{num(mine(e)[m.id],0)}/10</b></div><Segments label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/></div>)}</div>
 
   {(e.notes||e.review)&&<details className="q-more"><summary>備註</summary><p>{[e.review,e.notes].filter(Boolean).join('\n')}</p></details>}
  </article>}
@@ -182,10 +188,10 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   {hotel?<>
   <section className="q-panel q-hotel-stats">
    <h3 className="q-panel-title">能力值評分 <span>STAT SCORES</span></h3><p className="q-muted">{kindMetrics.filter(m=>m.id!=='breakfast').length} 項必評；早餐選填，關閉後不計入綜合分</p>
-   <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="改酒店名稱" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
+   <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="編輯酒店名稱同記入旅費" title="改名、記入旅費" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
    <button className="q-btn" onClick={()=>{if(window.confirm(`重置「${hotel.name}」嘅評分？`))patch(hotel.id,e=>{const r=e.people?RATERS.reduce((x,p)=>withPersonReset(x,p),e):e;r.scores={};return r})}}>重置分數</button>
-   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><CurrencyPick entry={hotel} data={budgetData} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div><BudgetLine entry={hotel} data={budgetData} trips={trips} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/>
-   {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?'#e8d6a0':'#3cb85c'} rest={off?'#f6ecd0':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
+   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><CurrencyPick entry={hotel} data={budgetData} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div>
+   {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?'#4a5680':'#3cb85c'} rest={off?'#26335f':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
    <p className="q-caption">綜合 <b className="q-green-text">{num(t)}</b> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
  
   </section>
@@ -214,7 +220,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
   <label>分類<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
   <label>價錢（全單，可選填）<span className="q-money"><CurrencyPick entry={d} data={budgetData} onChange={set}/><input maxLength={150} value={d.price} onChange={e=>set({price:e.target.value})} placeholder="例：68"/></span></label>
-  <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
+  <BudgetMore entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
   <div className="q-field"><span>評分（0 – 10）</span>
    {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={m.name} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id],0)}</b></div>)}
@@ -225,24 +231,25 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   {d.review&&<label>感想<textarea maxLength={3000} value={d.review} onChange={e=>set({review:e.target.value})}/></label>}
   <div className="q-form-actions"><button type="button" className="q-btn q-blue" onClick={cancel}>取消</button><button className="q-btn q-green" disabled={photoBusy}>{isNew?'新增美食':'保存修改'}</button></div>
  </form>}
- function spotForm(d:QuestEntry){return <form onSubmit={save} className="q-form">
+ function spotForm(d:QuestEntry){const ride=isRide(d),ms=metricsFor(d,kindMetrics);return <form onSubmit={save} className="q-form q-spot-form">
   <h2 className="q-form-title">{isNew?'添加景點':'編輯景點'}</h2>
-  <p className="q-muted">帶 * 為必填。點擊下方分數格可直接設定該指標分數（0-10）。</p>
-  <label>景點名稱 *<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：維多利亞港"/></label>
-  <div className="q-field"><span>所屬分類</span><div className="q-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
+  <p className="q-muted">帶 * 為必填。點擊或拖動評分條設定 1-10 分（10 分最好）。景點與機動遊戲各有自己的評分指標。</p>
+  <label>名稱 *<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder={ride?'例：世界最大翻斗水桶':'例：維多利亞港'}/></label>
+  <div className="q-field"><span>類型</span><div className="q-pick q-type-pick">{([['spot','景點'],['ride','機動遊戲']] as const).map(([v,l])=><button type="button" key={v} className={((d.spotType||'spot')===v?'on ':'')+v} onClick={()=>set({spotType:v})}>{l}</button>)}</div></div>
+  <div className="q-field"><span>所屬檔案</span><div className="q-pick q-folder-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
   <label>區域地點<input maxLength={150} value={d.region} onChange={e=>set({region:e.target.value})} placeholder="例：香港・九龍"/></label>
   <div className="q-field"><span>適配季節（可多選）</span><div className="q-pick seasons">{['春','夏','秋','冬'].map(s=><button type="button" key={s} className={(d.seasons.includes(s)?'on ':'')+SEASON_CLASS[s]} onClick={()=>set({seasons:d.seasons.includes(s)?d.seasons.filter(x=>x!==s):['春','夏','秋','冬'].filter(x=>x===s||d.seasons.includes(x))})}>{s}</button>)}</div></div>
-  <label>景區門票（每人）<span className="q-money"><CurrencyPick entry={d} data={budgetData} onChange={set}/><input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：220 或 免費"/></span></label>
-  <label>游玩項目門票（每人，可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：150（纜車、園區設施等，貨幣同上）"/></label>
-  <label>建議游玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
-  <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
+  <label>門票（景區／樂園）<span className="q-money"><CurrencyPick entry={d} data={budgetData} onChange={set}/><input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：220 或 免費"/></span></label>
+  <label>項目／設施收費（可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：150（纜車、單項設施等，貨幣同上）"/></label>
+  <label>建議遊玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
   <hr className="q-dash"/>
-  {kindMetrics.map(m=><div className="q-field q-seg-field" key={m.id}><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><Segments label={`${m.name}`} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id]??0,0)}/10</b></div>)}
+  <div className="q-slider-list">{ms.map(m=>{const v=mine(d)[m.id];return <div className="q-slide-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{spotIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}{m.reverse&&<em className="q-down" title="低分更好">↓</em>}</span><Slider min={1} label={m.name+(m.reverse?'（低分更好）':'')} color={metricColor(m)} value={v} onChange={nv=>setDraftScore(m.id,nv)}/><b className="q-num">{typeof v==='number'?num(v,0):'–'}/10</b></div>})}</div>
   <label>備註（可選填）<textarea maxLength={3000} value={d.notes} onChange={e=>set({notes:e.target.value})} placeholder="交通、注意事項、拍攝位……"/></label>
   {d.review&&<label>感想<textarea maxLength={3000} value={d.review} onChange={e=>set({review:e.target.value})}/></label>}
+  <BudgetMore entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green" disabled={photoBusy}>儲存</button></div>
  </form>}
- function hotelForm(d:QuestEntry){return <form onSubmit={save} className="q-form"><h2 className="q-form-title">{isNew?'新增酒店':'編輯酒店'}</h2><label>酒店名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})}/></label><div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green">儲存</button></div></form>}
+ function hotelForm(d:QuestEntry){return <form onSubmit={save} className="q-form"><h2 className="q-form-title">{isNew?'新增酒店':'編輯酒店'}</h2><label>酒店名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})}/></label><div className="q-field"><span>記入旅費</span><p className="q-muted">呢度設定只喺編輯時見到，評分頁面唔會顯示，方便截圖。</p><BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/></div><div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green">儲存</button></div></form>}
 
  return <section className={`quest qk-${kind}`}>
   <nav className="q-kinds" aria-label="評鑑類別">{(['hotel','spot','food'] as QuestKind[]).map(k=><button key={k} className={k===kind?'on':''} onClick={()=>switchKind(k)}>{k==='hotel'?<BedDouble/>:k==='spot'?<Mountain/>:<UtensilsCrossed/>}{questTitles[k]}</button>)}<small>跨旅程共用圖鑑</small></nav>

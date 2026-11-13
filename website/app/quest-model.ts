@@ -1,11 +1,17 @@
 export type QuestKind='hotel'|'spot'|'food';
 export type QuestMetric={id:string;name:string;color:string;reverse:boolean};
 export type QuestFolder={id:string;name:string;kind:QuestKind};
-export type QuestEntry={id:string;kind:QuestKind;folder:string;name:string;region:string;category:string;room:string;price:string;ticket:string;ride:string;duration:string;seasons:string[];spice:string;review:string;notes:string;photo:string;breakfast:boolean;scores:Record<string,number|null>;created:number;people?:Record<string,Record<string,number|null>>;sweet?:string;level?:'spice'|'sweet';/** Trip whose budget this price goes into; 'none' keeps it out. */trip?:string;stop?:string;nights?:number;/** Currency picked next to the price; empty = guess from the text or the trip. */currency?:string};
+export type QuestEntry={id:string;kind:QuestKind;folder:string;name:string;region:string;category:string;room:string;price:string;ticket:string;ride:string;duration:string;seasons:string[];spice:string;review:string;notes:string;photo:string;breakfast:boolean;scores:Record<string,number|null>;created:number;people?:Record<string,Record<string,number|null>>;sweet?:string;level?:'spice'|'sweet';/** Trip whose budget this price goes into; 'none' keeps it out. */trip?:string;stop?:string;nights?:number;/** Currency picked next to the price; empty = guess from the text or the trip. */currency?:string;/** Spots only: a sight (景點) or a ride (機動遊戲); rides use RIDE_METRICS. */spotType?:SpotType};
+export type SpotType='spot'|'ride';
 export type QuestData={version:1;folders:QuestFolder[];entries:QuestEntry[];metrics:Record<QuestKind,QuestMetric[]>};
 const metric=(id:string,name:string,color:string,reverse=false):QuestMetric=>({id,name,color,reverse});
 export function emptyQuest():QuestData{return {version:1,folders:[],entries:[],metrics:{hotel:[metric('location','地理位置','#e0aa27'),metric('comfort','舒適度','#8b77d8'),metric('environment','環境','#45a3c9'),metric('quiet','靜音程度','#64b296'),metric('value','性價比','#dd9550'),metric('breakfast','早餐豐富程度','#e3c865')],spot:[metric('view','景觀震撼度','#d9473c'),metric('crowd','人潮程度','#3d6fc9',true),metric('photo','出片率','#4e9a52')],food:[metric('taste','味道','#da8400'),metric('appearance','外觀','#9364dd'),metric('value','性價比','#008ab5'),metric('portion','份量','#07956c')]}}}
-export function questScore(entry:QuestEntry,metrics:QuestMetric[]):number|null{const active=metrics.filter(m=>!(entry.kind==='hotel'&&m.id==='breakfast'&&!entry.breakfast));if(!active.length||active.some(m=>typeof entry.scores[m.id]!=='number'))return null;return active.reduce((n,m)=>n+(m.reverse?10-entry.scores[m.id]!:entry.scores[m.id]!),0)/active.length}
+/** Rides (機動遊戲) have their own fixed metrics; ↓ ones count as "lower is better". */
+export const RIDE_METRICS:QuestMetric[]=[metric('thrill','刺激度','#d24a3a'),metric('queue','排隊時間','#3d6fc9',true),metric('gforce','失重／離心力','#c76f9a'),metric('stamina','體力門檻','#d24a3a',true),metric('experience','體驗感','#3d6fc9')];
+export const isRide=(e:Pick<QuestEntry,'kind'|'spotType'>)=>e.kind==='spot'&&e.spotType==='ride';
+/** Metrics that apply to one entry: rides swap the spot metrics for RIDE_METRICS. */
+export const metricsFor=(e:Pick<QuestEntry,'kind'|'spotType'>,metrics:QuestMetric[])=>isRide(e)?RIDE_METRICS:metrics;
+export function questScore(entry:QuestEntry,metrics:QuestMetric[]):number|null{const active=metricsFor(entry,metrics).filter(m=>!(entry.kind==='hotel'&&m.id==='breakfast'&&!entry.breakfast));if(!active.length||active.some(m=>typeof entry.scores[m.id]!=='number'))return null;return active.reduce((n,m)=>n+(m.reverse?10-entry.scores[m.id]!:entry.scores[m.id]!),0)/active.length}
 export function questGrade(score:number|null){return score===null?'—':score>=9?'S':score>=8?'A':score>=6?'B':score>=4?'C':'D'}
 export const gradeWords:Record<string,string>={S:'超級推薦',A:'推薦',B:'不錯',C:'普通',D:'有待改善','—':'待評分'};
 /** Reference-sheet tier names shown on the grade badges. */

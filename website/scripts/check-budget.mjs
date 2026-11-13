@@ -8,7 +8,7 @@ const {demo,validData,tripPeople}=model;
 const amountFn='const amount=v=>new Intl.NumberFormat("en-HK",{maximumFractionDigits:2}).format(v);';
 const {balances,perPerson,transfers}=await load('app/split.ts',amountFn);
 const helpers=amountFn+'const kinds='+JSON.stringify(model.kinds)+';const dateAt=(t,d)=>new Date(Date.parse(t.start)+(d-1)*86400000).toISOString().slice(0,10);const tripPeople=t=>t.people&&t.people.length?t.people:["QMI","YUMI"];const currencies=["HKD","CNY"];const colorOf=()=>"#000";const travelIcon=()=>"";const _jsx=()=>null,_jsxs=()=>null,_Fragment=null;const useState=v=>[v,()=>{}],useEffect=()=>{},useRef=v=>({current:v});';
-const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questCurrency,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
+const {retainStopExpenses,syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questCurrency,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
 
 const d=demo(),t=d.trips[0];
 t.expenses=[];t.tickets=[];
@@ -102,3 +102,51 @@ assert.equal(parsePrice('免費','HKD'),undefined);
  t.expenses.push({id:'dup',title:'酒店住宿',amount:872.03,currency:'HKD',rate:1,payer:'QMI',people:['QMI','YUMI'],status:'已付',category:'酒店',date:'2026-11-21'});
  const dd=likelyDuplicates(t);assert.ok(dd.has('dup')&&dd.has('auto-quest-qh'));assert.equal(dd.has('auto-stop-f1'),false);}
 console.log('PASS: atlas prices linked to trips without double counting, duplicate flags, leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average, fewest repayments and the usual trip currency.');
+
+// Deletion never reassigns an explicit atlas link to a same-name stop elsewhere.
+{
+ const d=demo(),a=d.trips[0];a.id='A';a.expenses=[];a.tickets=[];
+ a.stops=[{...a.stops[0],id:'s',kind:'美食',title:'Restaurant',cost:undefined,fare:undefined}];
+ const b=structuredClone(a);b.id='B';b.stops[0].id='b';d.trips.push(b);
+ const entry={id:'entry',kind:'food',name:'Restaurant',price:'100',currency:'HKD',trip:'A',stop:'s'};
+ d.quest={entries:[entry]};
+ syncAll(d);assert.equal(a.expenses[0].amount,100);assert.equal(b.expenses.length,0);
+ a.deletedAt='2026-11-13T00:00:00Z';syncAll(d);
+ assert.equal(questLink(entry,d).how,'missing-trip');assert.equal(b.expenses.length,0);
+ delete a.deletedAt;syncAll(d);assert.equal(a.expenses[0].amount,100);
+ a.stops[0].deletedAt='2026-11-13T00:00:00Z';syncAll(d);
+ assert.equal(questLink(entry,d).how,'missing-stop');assert.equal(a.expenses.length,0);
+ delete a.stops[0].deletedAt;a.stops[0].status='取消';syncAll(d);assert.equal(a.expenses.length,0);
+ a.stops[0].status='待定';syncAll(d);assert.equal(a.expenses[0].amount,100);
+ retainStopExpenses(d,a,'s');a.stops[0].deletedAt='2026-11-13T00:00:00Z';syncAll(d);
+ assert.equal(a.expenses.filter(e=>!e.deletedAt).length,1);
+ assert.equal(a.expenses.find(e=>!e.deletedAt).source,undefined);
+ delete a.stops[0].deletedAt;syncAll(d);
+ assert.equal(a.expenses.filter(e=>!e.deletedAt).length,1,'restoring the stop does not double-charge retained spending');
+ entry.trip='B';entry.stop=undefined;assert.equal(questLink(entry,d).trip.id,'B','explicit relinking works');
+}
+for(const input of ['-100','2人共200','447／晚（2晚）','100-200','1,2','1.2.3','HK$100 CNY','100abc','1e3'])
+ assert.equal(parsePrice(input,'HKD'),undefined,'ambiguous price rejected: '+input);
+assert.deepEqual(parsePrice('1,234.50','HKD'),{amount:1234.5,currency:'HKD'});
+{
+ const t=demo().trips[0];t.timezone='Asia/Hong_Kong';t.rates={};t.expenseCurrency=undefined;
+ t.stops.forEach(s=>{s.deletedAt='x';s.cost={amount:10,currency:'CNY'}});
+ t.tickets=[{currency:'CNY',deletedAt:'x'}];
+ t.expenses=[{currency:'CNY',rate:99,deletedAt:'x'}];
+ assert.equal(tripCurrency(t),'HKD');assert.deepEqual(usualCurrency(t),{currency:'HKD'});
+ t.expenseCurrency='CNY';assert.equal(usualCurrency(t).rate,undefined,'deleted rate ignored');
+ t.expenses.push({currency:'CNY',rate:1.1});assert.equal(usualCurrency(t).rate,1.1);
+}
+console.log('PASS: deleted links never migrate; deleted/cancelled stops stop charging; optional retained spending survives restore without duplicates; ambiguous prices and recycled currency/rates rejected.');
+
+{
+ const d=demo(),t=d.trips[0];t.expenses=[];t.tickets=[];t.stops=[t.stops[0]];
+ const s=t.stops[0];s.cost={amount:200,currency:'HKD'};s.fare={amount:50,currency:'HKD'};
+ syncAll(d);t.expenses[0].payer='YUMI';t.expenses[0].status='未付';
+ retainStopExpenses(d,t,s.id);s.deletedAt='2026-11-13T00:00:00Z';syncAll(d);
+ assert.equal(t.expenses.filter(e=>!e.deletedAt).reduce((n,e)=>n+e.amount,0),250);
+ assert.equal(t.expenses.find(e=>!e.deletedAt&&e.amount===200).payer,'YUMI');
+ assert.equal(t.expenses.find(e=>!e.deletedAt&&e.amount===200).status,'未付');
+ delete s.deletedAt;syncAll(d);assert.equal(t.expenses.filter(e=>!e.deletedAt).length,2);
+ assert.ok(validData(d),'retained expenses survive backup validation');
+}

@@ -53,7 +53,7 @@ export function rateFor(t: Trip, cur: string, existing?: Expense): number | null
   if (cur === "HKD") return 1;
   const saved = t.rates?.[cur];
   if (saved && saved > 0) return saved;
-  if (existing && existing.currency === cur && existing.rate > 0) return existing.rate;
+  if (existing && !existing.deletedAt && existing.currency === cur && existing.rate > 0) return existing.rate;
   const manual = t.expenses.filter((e) => !e.deletedAt && !e.source && e.currency === cur && e.rate > 0 && e.rate !== 1);
   return manual.length ? manual[manual.length - 1].rate : null;
 }
@@ -68,13 +68,15 @@ const tripDays = (t: Trip) => Math.max(1, Math.round((Date.parse(t.end) - Date.p
 const sameName = (e: QuestEntry, s: Stop) => !!e.name && (e.name === s.title.slice(0, 100) || s.title.includes(e.name));
 const matchStops = (e: QuestEntry, t: Trip) => liveStops(t).filter((s) => s.kind === QUEST_KIND[e.kind] && sameName(e, s));
 
-export type QuestLink = { trip?: Trip; stops: Stop[]; how: "picked" | "imported" | "matched" | "none" | "many" | "unmatched" };
+export type QuestLink = { trip?: Trip; stops: Stop[]; how: "picked" | "imported" | "matched" | "none" | "many" | "unmatched" | "missing-trip" | "missing-stop" };
 export function questLink(e: QuestEntry, d: Data): QuestLink {
   if (e.trip === "none") return { stops: [], how: "none" };
   const trips = d.trips.filter((t) => !t.deletedAt);
   if (e.trip) {
     const t = trips.find((x) => x.id === e.trip);
+    if (!t) return { stops: [], how: "missing-trip" };
     if (t) {
+      if (e.stop && !liveStops(t).some(s => s.id === e.stop)) return { stops: [], how: "missing-stop" };
       const own = e.stop ? liveStops(t).filter((s) => s.id === e.stop) : [];
       return { trip: t, stops: own.length ? [...own, ...matchStops(e, t).filter((s) => s.id !== e.stop)] : matchStops(e, t), how: e.stop ? "imported" : "picked" };
     }
@@ -87,10 +89,15 @@ export function questLink(e: QuestEntry, d: Data): QuestLink {
 /** Reads a typed price such as "792.75", "HK$220", "¥120", "80元" or "CNY 80". "免費" or no number gives nothing. */
 export function parsePrice(text: string, fallback: string): Money | undefined {
   const raw = (text || "").replace(/,/g, "").trim();
-  const m = raw.match(/\d+(?:\.\d+)?/);
+  // Accept one amount with a supported currency marker, never extract a digit from prose.
+  const marker = "(?:" + currencies.join("|") + "|HK\\$|NT\\$|US\\$|S\\$|A\\$|RMB|港幣|港元|港紙|新台幣|台幣|美元|美金|新加坡|澳元|澳幣|日圓|日元|円|韓圜|韓元|泰銖|歐元|英鎊|人民幣|元|蚊|[¥￥₩฿€£$])";
+  const original = (text || "").trim();
+  const markers = original.match(new RegExp(marker, "gi")) || [];
+  if (markers.length > 1) return undefined;
+  const m = original.match(new RegExp("^(?:" + marker + "\\s*)?((?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,2})?)(?:\\s*" + marker + ")?$", "i"));
   if (!m) return undefined;
-  const n = Math.round(Number(m[0]) * 100) / 100;
-  if (!(n > 0)) return undefined;
+  const n = Math.round(Number(m[1].replace(/,/g, "")) * 100) / 100;
+  if (!Number.isFinite(n) || !(n > 0)) return undefined;
   const up = raw.toUpperCase();
   const code = currencies.find((c) => new RegExp("(^|[^A-Z])" + c + "([^A-Z]|$)").test(up));
   let currency = code || "";
@@ -222,6 +229,23 @@ export function syncAuto(t: Trip, d?: Data): boolean {
   return true;
 }
 
+/** Convert the affected automatic spending to manual rows before recycling a stop. */
+export function retainStopExpenses(d: Data, t: Trip, stopId: string) {
+  const keys = new Set(["stop:" + stopId, "leg:" + stopId]);
+  for (const e of d.quest?.entries || []) {
+    const link = questLink(e, d);
+    if (link.trip?.id === t.id && link.stops.some(s => s.id === stopId))
+      for (const c of questCharges(e, d)) if (!c.skip) keys.add(c.key);
+  }
+  const rows = t.expenses.filter(e => !e.deletedAt && e.source && keys.has(e.source));
+  for (const row of rows) {
+    const manual = { ...row, id: "retained-" + row.id + "-" + Date.now() };
+    delete manual.source;
+    t.expenses.push(manual);
+    row.deletedAt = new Date().toISOString();
+  }
+}
+
 export function syncAll(d: Data): boolean {
   let changed = false;
   for (const t of d.trips) if (!t.deletedAt && syncAuto(t, d)) changed = true;
@@ -239,12 +263,12 @@ export function tripCurrency(t: Trip) {
   const add = (c?: string) => {
     if (c && c !== "HKD") n[c] = (n[c] || 0) + 1;
   };
-  for (const s of t.stops) {
+  for (const s of liveStops(t)) {
     add(s.cost?.currency);
     add(s.fare?.currency);
   }
-  for (const k of t.tickets || []) add(k.currency);
-  for (const e of t.expenses) add(e.currency);
+  for (const k of t.tickets || []) if (!k.deletedAt) add(k.currency);
+  for (const e of t.expenses) if (!e.deletedAt && !e.source) add(e.currency);
   return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || "HKD";
 }
 
@@ -263,7 +287,7 @@ export function usualCurrency(t: Trip): { currency: string; rate?: number } {
   const used = tripCurrency(t);
   const currency = (last && currencies.includes(last) ? last : "") || (used !== "HKD" ? used : "") || zoneCurrency(t.timezone) || "HKD";
   if (currency === "HKD") return { currency };
-  const seen = [...t.expenses].reverse().find((e) => e.currency === currency && e.rate > 0 && e.rate !== 1)?.rate;
+  const seen = [...t.expenses].reverse().find((e) => !e.deletedAt && !e.source && e.currency === currency && e.rate > 0 && e.rate !== 1)?.rate;
   return { currency, rate: t.rates?.[currency] || seen };
 }
 

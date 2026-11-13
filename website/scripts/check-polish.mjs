@@ -29,3 +29,18 @@ await assert.rejects(readShared('#share=broken'));
 // Packing templates have no duplicates inside a template.
 for(const p of PACK_TEMPLATES)assert.equal(new Set(p.items).size,p.items.length,p.name);
 console.log('PASS: full demo trip, multi-photo diary validation, private-safe share link round trip and packing templates.');
+
+// Shortened trips retain recycled DAY values, but restoring requires a valid new day.
+{
+ const {restoreStopDay}=await load('app/travel-tools.ts');
+ const d=demo(),t=d.trips[0];t.stops.forEach(s=>s.deletedAt='2026-11-13T00:00:00Z');
+ t.stops[0].day=5;t.end=t.start;
+ assert.ok(validData(d),'recycled later days do not invalidate shortened trips or backups');
+ const id=t.stops[0].id;
+ assert.equal(restoreStopDay(t,id,5),false);assert.ok(t.stops[0].deletedAt);
+ assert.equal(restoreStopDay(t,id,1.5),false);
+ assert.equal(restoreStopDay(t,id,1),true);assert.equal(t.stops[0].deletedAt,undefined);
+ assert.equal(t.stops[0].day,1);assert.ok(validData(d));
+ t.stops[0].day=2;assert.equal(validData(d),false,'live stops must still fit dates');
+}
+console.log('PASS: shortened trip backups preserve recycled stops; restore validates replacement day.');

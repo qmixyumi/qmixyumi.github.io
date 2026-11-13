@@ -9,7 +9,7 @@ import './quest-navy.css';
 import './quest-scores.css';
 import type {Stop,Trip,Data} from './model';
 import {amount} from './model';
-import {questLink,questCharges,hotelNights,questCurrency} from './budget';
+import {questLink,questCharges,hotelNights,questCurrency,parsePrice} from './budget';
 import {currencies} from './extras';
 
 const stopKind:Record<string,QuestKind>={酒店:'hotel',美食:'food',景點:'spot'};
@@ -65,7 +65,11 @@ function BudgetLine({entry,data,trips,onChange}:{entry:QuestEntry;data?:Data;tri
  if(!data)return null;
  const link=questLink(entry,data),charges=questCharges(entry,data),t=link.trip;
  const hasPrice=entry.kind==='spot'?!!(entry.ticket||entry.ride):!!entry.price;
- const text=link.how==='none'?'唔計入任何旅程嘅旅費。'
+ const invalidPrice=(entry.kind==='spot'?[entry.ticket,entry.ride]:[entry.price]).some(v=>!!v.trim()&&!/^(免費|免费|0(?:\.0{1,2})?)$/.test(v.trim())&&!parsePrice(v,questCurrency(entry,data)));
+ const text=invalidPrice?'價格未能確認，未辨識嘅金額唔會入帳。請只填金額（例如 200 或 HK$200），人數、晚數同描述請分開填。'
+  :link.how==='missing-trip'?'原本旅程已刪除或不存在，暫停自動入帳；請重新選擇旅程。'
+  :link.how==='missing-stop'?'原本行程已刪除、取消或不存在，暫停自動入帳；還原行程或重新選擇旅程先恢復。'
+  :link.how==='none'?'唔計入任何旅程嘅旅費。'
   :link.how==='many'?'有幾個旅程都有同名行程，揀返邊個旅程先會計入旅費。'
   :link.how==='unmatched'?'未配對到旅程，揀一個旅程先會計入旅費。'
   :!charges.length?(hasPrice?'睇唔到價錢入面嘅數字，例如寫「HK$220」或「792.75」。':`填咗價錢就會自動記入「${t!.name}」旅費。`)
@@ -73,13 +77,14 @@ function BudgetLine({entry,data,trips,onChange}:{entry:QuestEntry;data?:Data;tri
   :`已自動記入「${t!.name}」旅費：${charges.map(c=>`${c.money.currency} ${amount(c.money.amount)}${c.note?`（${c.note}）`:''}`).join('、')}`;
  const ok=charges.length>0&&!charges[0].skip;
  return <div className={'q-budget-line'+(ok?' on':'')}>
-  <label><span>記入旅費</span><select value={entry.trip||''} onChange={e=>onChange({trip:e.target.value||undefined,stop:undefined})}><option value="">自動（同名行程）</option>{trips.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}<option value="none">唔計入旅費</option></select></label>
+  <label><span>記入旅費</span><select value={entry.trip||''} onChange={e=>onChange({trip:e.target.value||undefined,stop:undefined})}><option value="">自動（同名行程）</option>{entry.trip&&entry.trip!=='none'&&!trips.some(t=>t.id===entry.trip)&&<option value={entry.trip}>原本旅程已刪除／不存在</option>}{trips.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}<option value="none">唔計入旅費</option></select></label>
   {entry.kind==='hotel'&&t&&<label><span>晚數</span><input key={entry.id+':'+(entry.nights||0)} type="number" min={1} max={365} inputMode="numeric" defaultValue={entry.nights||''} placeholder={String(hotelNights({...entry,nights:0},t,link.stops))} onBlur={e=>{const n=Math.round(Number(e.target.value));const v=n>0?Math.min(365,n):undefined;if(v!==entry.nights)onChange({nights:v})}}/></label>}
-  <small>{text}</small>
+  {link.how==='missing-stop'&&<button type="button" className="secondary" onClick={()=>onChange({stop:undefined})}>保留旅程連結，獨立計入旅費</button>}
+  <small role={invalidPrice?'alert':undefined}>{text}</small>
  </div>
 }
 /** Budget link tucked into a closed section so the rating looks clean in screenshots. */
-function BudgetMore(p:{entry:QuestEntry;data?:Data;trips:Trip[];onChange:(p:Partial<QuestEntry>)=>void}){if(!p.data)return null;return <details className="q-budget-more"><summary><Wallet/> 記入旅費設定<small>{p.entry.trip==='none'?'唔計入':p.entry.trip?p.trips.find(t=>t.id===p.entry.trip)?.name||'自動':'自動'}</small></summary><BudgetLine {...p}/></details>}
+function BudgetMore(p:{entry:QuestEntry;data?:Data;trips:Trip[];onChange:(p:Partial<QuestEntry>)=>void}){if(!p.data)return null;const invalid=(p.entry.kind==='spot'?[p.entry.ticket,p.entry.ride]:[p.entry.price]).some(v=>!!v.trim()&&!/^(免費|免费|0(?:\.0{1,2})?)$/.test(v.trim())&&!parsePrice(v,questCurrency(p.entry,p.data)));return <details open={invalid||undefined} className="q-budget-more"><summary><Wallet/> 記入旅費設定<small>{p.entry.trip==='none'?'唔計入':p.entry.trip?p.trips.find(t=>t.id===p.entry.trip)?.name||'旅程已刪除':'自動'}</small></summary><BudgetLine {...p}/></details>}
 
 export default function Quest({value,onChange,stops=[],tripName='',focus='',trips=[],tripId='',budgetData}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;trips?:Trip[];tripId?:string;budgetData?:Data;person?:string;onPerson?:(p:string)=>void;focus?:string}){
  const q=value||emptyQuest();

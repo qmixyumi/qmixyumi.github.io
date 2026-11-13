@@ -9,3 +9,11 @@ export function trashRows(d:Data):BinRow[]{const rows:BinRow[]=[];for(const t of
 export function markDeleted(d:Data,kind:BinKind,tripId:string,id:string,deleted:boolean){const t=d.trips.find(x=>x.id===tripId);if(!t)return;const item=kind==='trips'?t:t[kind]?.find(x=>x.id===id);if(item)item.deletedAt=deleted?new Date().toISOString():undefined;}
 export function localDate(zone:string,now=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:zone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now)}
 export function todayDay(t:Trip,today:string){const n=Math.floor((Date.parse(today)-Date.parse(t.start))/86400000)+1;return Math.max(1,Math.min(Math.floor((Date.parse(t.end)-Date.parse(t.start))/86400000)+1,n))}
+
+/** Recycled stops outside shortened dates need an explicit replacement DAY. */
+export function restoreStopDay(t:Trip,id:string,day:number){
+ const max=Math.round((Date.parse(t.end)-Date.parse(t.start))/86400000)+1;
+ if(!Number.isInteger(day)||day<1||day>max)return false;
+ const s=t.stops.find(s=>s.id===id&&s.deletedAt);if(!s)return false;
+ s.day=day;delete s.deletedAt;return true;
+}

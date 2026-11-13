@@ -70,7 +70,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  const shared=(e:QuestEntry,id:string,v:number|null)=>e.people?RATERS.reduce((x,p)=>withPersonScore(x,p,id,v),e):{...e,scores:{...e.scores,[id]:v}};
  const setScore=(e:QuestEntry,id:string,v:number|null)=>patch(e.id,x=>shared(x,id,v));
  function erase(e:QuestEntry){if(window.confirm(`刪除「${e.name}」？可用頁面「撤銷」復原。`))commit(n=>{n.entries=n.entries.filter(x=>x.id!==e.id)})}
- function removeFolder(id:string){const selected=folders.find(f=>f.id===id);if(selected&&window.confirm(`移除檔案「${selected.name}」？記錄會保留並移到未分類。`)){commit(n=>{n.folders=n.folders.filter(f=>f.id!==id);n.entries.forEach(e=>{if(e.folder===id)e.folder=''})});if(folder===id)setFolder('all')}}
+ function removeFolder(id:string){const selected=folders.find(f=>f.id===id);if(selected&&window.confirm(`刪除分類「${selected.name}」？入面嘅記錄會保留，移去「未分類」。`)){commit(n=>{n.folders=n.folders.filter(f=>f.id!==id);n.entries.forEach(e=>{if(e.folder===id)e.folder=''})});if(folder===id)setFolder('all')}}
  const importable=stops.filter(s=>!s.deletedAt&&s.status!=='取消'&&stopKind[s.kind]===kind&&!q.entries.some(e=>e.kind===kind&&(e.name===s.title.slice(0,100)||s.title.includes(e.name))));
  const targetFolder=folder==='all'||folder==='none'?'':folder;
  function importStops(){if(!importable.length)return;commit(n=>{for(const s of importable)n.entries.push({...stopToEntry(s,kind,tripName),folder:targetFolder})});setNotice(`已由「${tripName}」加入 ${importable.length} 項；原本喺收藏圖鑑嘅詳細評分已一併轉換。`)}
@@ -83,13 +83,13 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  const logo=kind==='hotel'?<Gem/>:<Shield/>;
  const header=<header className="q-head">
   <div className="q-brand"><span className="q-logo">{logo}{kind!=='hotel'&&<Star className="q-logo-star"/>}</span><div><h2 className="q-pixel-title">{theme.title}</h2><p>{theme.sub}</p></div></div>
-  {kind==='hotel'?<div className="q-head-side"><button className="q-btn q-green" onClick={()=>openDraft(newQuestEntry('hotel',targetFolder))}><Plus/> 新增酒店</button><span className="q-chip-stat">已登記酒店 <b>{all.length}</b> 間 · <b>{folders.length}</b> 個分類</span></div>
+  {kind==='hotel'?<div className="q-head-side"><span className="q-chip-stat">已登記酒店 <b>{all.length}</b> 間 · <b>{folders.length}</b> 個分類</span></div>
   :kind==='food'?<><div className="q-head-stats"><span>圖鑑 <b>{items.length}</b></span><span>平均 <b>{average===null?'—':num(average)}</b></span><span>最高 <b>{rated.length?num(Math.max(...rated)):'—'}</b></span></div><button className="q-btn q-green" onClick={()=>openDraft(newQuestEntry('food',targetFolder))}><Plus/> 新增美食</button></>
   :<div className="q-head-side"><button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 指標設定</button><button className="q-btn q-green" onClick={()=>openDraft(newQuestEntry('spot',targetFolder))}><Plus/> 添加景點</button></div>}
  </header>;
  const tabs=<div className="q-tabs-row">
   <div className="q-tabs"><button className={'q-btn'+(view==='cards'?' q-green':'')} onClick={()=>setView('cards')}>{kind==='spot'&&<LayoutGrid/>}{kind==='hotel'?'評分冒險':kind==='spot'?'景點列表':'評分圖鑑'}</button><button className={'q-btn'+(view==='rank'?' q-green':'')} onClick={()=>setView('rank')}>{kind==='spot'&&<Trophy/>}{kind==='hotel'?'排名榜':'排行榜'}</button></div>
-  <div className="q-tabs">{stops.length>0&&<button className="q-btn" disabled={!importable.length} onClick={importStops} title="將目前旅程嘅項目加入圖鑑">⇣ 由行程匯入（{importable.length}）</button>}{kind==='food'&&<button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 評分指標</button>}{kind==='hotel'&&<button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 指標設定</button>}</div>
+  <div className="q-tabs">{stops.length>0&&<button className="q-btn" disabled={!importable.length} onClick={importStops} title="將目前旅程嘅項目加入圖鑑">⇣ 由行程匯入（{importable.length}）</button>}{kind==='food'&&<button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 評分指標</button>}</div>
  </div>;
 
  // ---------- Ranking ----------
@@ -147,11 +147,13 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  function hotelView(){const t=hotel?score(hotel):null,g=questGrade(t);const counted=hotel?activeMetrics(hotel).filter(m=>typeof hotel.scores[m.id]==='number').length:0;
   return <div className="q-hotel">
   <section className="q-panel q-hotel-list">
-   <h3 className="q-panel-title">冒險地圖 <span>HOTEL LIST</span></h3><p className="q-muted">選擇一家酒店開始評分冒險</p>
-   <div className="q-folder-box"><div className="q-folder-tabs"><button className={folder==='all'?'on':''} onClick={()=>setFolder('all')}>全部</button>{folders.map(f=><button key={f.id} className={folder===f.id?'on':''} onClick={()=>setFolder(f.id)}>{f.name}</button>)}{all.some(e=>!e.folder)&&folders.length>0&&<button className={folder==='none'?'on':''} onClick={()=>setFolder('none')}>未分類</button>}</div>
-    <div className="q-folder-actions"><button className="q-btn" onClick={()=>setFolderForm({id:'',name:''})}><Plus/> 新增分類</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>setFolderForm({id:folder,name:folderName(folder)})}>分類改名</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>removeFolder(folder)}>刪除分類</button></div></div>
-   <div className="q-hotel-items">{hotelList.map(e=>{const s=score(e),gr=questGrade(s);return <div key={e.id} id={'quest-'+e.id} className={'q-hotel-item'+(hotel?.id===e.id?' on':'')}><button className="q-hotel-pick" onClick={()=>setHotelId(e.id)}><strong>{e.name}</strong><span className="q-hotel-meta"><Stars value={s}/><span className="q-grade-chip"><b>{gr==='—'?'?':gr}</b>級</span><span>{s===null?'待評':num(s)+' 分'}</span></span><small>{e.room&&`房型「${e.room}」`}{e.room&&e.price&&' · '}{e.price&&<><b className="q-num">{e.price}</b>／晚</>}</small></button><button className="q-x" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><X/></button></div>})}{!hotelList.length&&<p className="q-muted q-pad">{all.length?'呢個分類未有酒店。':'未有酒店，撳頁頂「新增酒店」開始。'}</p>}</div>
-   <form className="q-create" onSubmit={ev=>{ev.preventDefault();createHotel()}}><input value={newHotel} maxLength={100} onChange={e=>setNewHotel(e.target.value)} placeholder="輸入酒店名稱…" aria-label="新酒店名稱"/><button className="q-btn q-gold">建立</button></form>
+   <h3 className="q-panel-title">冒險地圖 <span>HOTEL LIST</span></h3>
+   <form className="q-create q-create-top" onSubmit={ev=>{ev.preventDefault();createHotel()}}><input id="q-new-hotel" value={newHotel} maxLength={100} onChange={e=>setNewHotel(e.target.value)} placeholder="酒店名稱，例如 京都町家旅宿" aria-label="新酒店名稱"/><button className="q-btn q-gold"><Plus/> 新增酒店</button></form>
+   <p className="q-muted">{all.length?'揀一間酒店開始評分':'未有酒店：喺上面輸入第一間酒店名稱就可以開始評分。'}</p>
+   {folders.length>0&&<div className="q-folder-box"><div className="q-folder-tabs"><button className={folder==='all'?'on':''} onClick={()=>setFolder('all')}>全部</button>{folders.map(f=><button key={f.id} className={folder===f.id?'on':''} onClick={()=>setFolder(f.id)}>{f.name}</button>)}{all.some(e=>!e.folder)&&folders.length>0&&<button className={folder==='none'?'on':''} onClick={()=>setFolder('none')}>未分類</button>}</div>
+    </div>}
+   <div className="q-hotel-items">{hotelList.map(e=>{const s=score(e),gr=questGrade(s);return <div key={e.id} id={'quest-'+e.id} className={'q-hotel-item'+(hotel?.id===e.id?' on':'')}><button className="q-hotel-pick" onClick={()=>setHotelId(e.id)}><strong>{e.name}</strong><span className="q-hotel-meta"><Stars value={s}/><span className="q-grade-chip"><b>{gr==='—'?'?':gr}</b>級</span><span>{s===null?'待評':num(s)+' 分'}</span></span><small>{e.room&&`房型「${e.room}」`}{e.room&&e.price&&' · '}{e.price&&<><b className="q-num">{e.price}</b>／晚</>}</small></button><button className="q-x" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><X/></button></div>})}{!hotelList.length&&<p className="q-muted q-pad">{all.length?'呢個分類未有酒店。':''}</p>}</div>
+   <details className="q-hotel-settings"><summary>分類同評分指標（可唔使理）</summary><p className="q-muted">分類用嚟將酒店分組，例如「東京酒店」「北疆酒店」。</p><div className="q-folder-actions"><button className="q-btn" onClick={()=>setFolderForm({id:'',name:''})}><Plus/> 新增分類</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>setFolderForm({id:folder,name:folderName(folder)})}>分類改名</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>removeFolder(folder)}>刪除分類</button><button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 評分指標</button></div></details>
   </section>
   {hotel?<>
   <section className="q-panel q-hotel-stats">
@@ -171,7 +173,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
     <input ref={hotelPhoto} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(f)void hotelPhotoChange(f,hotel.id);e.target.value=''}}/></div>
    <div className="q-review"><h4 className="q-sub-title">住後感 <span>STAY REVIEW</span></h4><LazyText multiline aria-label="住後感" maxLength={3000} placeholder="— 住後感，每行一點" value={hotel.review} onSave={v=>patch(hotel.id,e=>{e.review=v})}/><p className="q-caption"><span>{hotel.breakfast?'早餐計分中':'早餐未使用'} · 住後感可補位記錄整體評價</span><span>{hotel.review.length} 字</span></p></div>
    <h4 className="q-panel-title small">屬性 / 技能備註 <span>SKILL NOTES</span></h4><LazyText multiline aria-label="屬性／技能備註" maxLength={3000} placeholder="— 設施、交通、附近好去處" value={hotel.notes} onSave={v=>patch(hotel.id,e=>{e.notes=v})}/><p className="q-caption"><span>備註會自動存檔</span><span>{hotel.notes.length} 字</span></p>
-   <label className="q-move">所屬檔案<select value={hotel.folder} onChange={e=>{const v=e.target.value;patch(hotel.id,x=>{x.folder=v})}}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+   <label className="q-move">所屬分類<select value={hotel.folder} onChange={e=>{const v=e.target.value;patch(hotel.id,x=>{x.folder=v})}}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
   </section></>:<section className="q-panel q-hotel-empty"><BedDouble/><p>喺左邊建立或者揀一間酒店，就可以開始評分。</p></section>}
  </div>}
 
@@ -186,7 +188,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
   <h2 className="q-form-title">{isNew?'新增美食':'編輯美食'}</h2>
   <label>名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：炒粿條"/></label>
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
-  <label>分檔<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+  <label>分類<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
   <div className="q-field"><span>評分（0 – 10）</span>
    {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={m.name} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id],0)}</b></div>)}
@@ -201,7 +203,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
   <h2 className="q-form-title">{isNew?'添加景點':'編輯景點'}</h2>
   <p className="q-muted">帶 * 為必填。點擊下方分數格可直接設定該指標分數（0-10）。</p>
   <label>景點名稱 *<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：維多利亞港"/></label>
-  <div className="q-field"><span>所屬檔案</span><div className="q-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
+  <div className="q-field"><span>所屬分類</span><div className="q-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
   <label>區域地點<input maxLength={150} value={d.region} onChange={e=>set({region:e.target.value})} placeholder="例：香港・九龍"/></label>
   <div className="q-field"><span>適配季節（可多選）</span><div className="q-pick seasons">{['春','夏','秋','冬'].map(s=><button type="button" key={s} className={(d.seasons.includes(s)?'on ':'')+SEASON_CLASS[s]} onClick={()=>set({seasons:d.seasons.includes(s)?d.seasons.filter(x=>x!==s):['春','夏','秋','冬'].filter(x=>x===s||d.seasons.includes(x))})}>{s}</button>)}</div></div>
   <label>景區門票<input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：HK$220 或 免費"/></label>

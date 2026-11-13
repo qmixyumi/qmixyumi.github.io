@@ -8,7 +8,7 @@ const {demo,validData,tripPeople}=model;
 const amountFn='const amount=v=>new Intl.NumberFormat("en-HK",{maximumFractionDigits:2}).format(v);';
 const {balances,perPerson,transfers}=await load('app/split.ts',amountFn);
 const helpers=amountFn+'const kinds='+JSON.stringify(model.kinds)+';const dateAt=(t,d)=>new Date(Date.parse(t.start)+(d-1)*86400000).toISOString().slice(0,10);const tripPeople=t=>t.people&&t.people.length?t.people:["QMI","YUMI"];const currencies=["HKD","CNY"];const colorOf=()=>"#000";const travelIcon=()=>"";const _jsx=()=>null,_jsxs=()=>null,_Fragment=null;const useState=v=>[v,()=>{}],useEffect=()=>{},useRef=v=>({current:v});';
-const {syncAuto,syncAll,missingRates,autoSources,tripCurrency}=await load('app/budget.tsx',helpers);
+const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency}=await load('app/budget.tsx',helpers);
 
 const d=demo(),t=d.trips[0];
 t.expenses=[];t.tickets=[];
@@ -54,4 +54,9 @@ const bad2=structuredClone(g);bad2.trips[0].people=['QMI','QMI'];assert.equal(va
 const bad3=structuredClone(g);bad3.trips[0].stops[0].fare={amount:-1,currency:'HKD'};assert.equal(validData(bad3),false,'no negative fares');
 const bad4=structuredClone(g);bad4.trips[0].budgets={美食:-5};assert.equal(validData(bad4),false,'no negative category budget');
 assert.equal(syncAll(g),false,'a trip without prices gets no automatic rows');
-console.log('PASS: leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average and fewest repayments.');
+// A new expense starts in the trip's usual currency: a Kyoto trip with no prices yet still starts in JPY.
+assert.equal(zoneCurrency('Asia/Tokyo'),'JPY');assert.equal(zoneCurrency('Europe/Paris'),'EUR');assert.equal(zoneCurrency('Asia/Hong_Kong'),'');
+{const k={...structuredClone(g.trips[0]),id:'kyoto-test',timezone:'Asia/Tokyo',expenses:[],tickets:[],stops:[],rates:{JPY:0.05}};const u=usualCurrency(k);assert.equal(u.currency,'JPY');assert.equal(u.rate,0.05);
+assert.equal(usualCurrency({...k,timezone:'Asia/Hong_Kong'}).currency,'HKD');
+assert.equal(usualCurrency({...k,expenseCurrency:'HKD'}).currency,'HKD','the currency last used on the trip wins');}
+console.log('PASS: leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average, fewest repayments and the usual trip currency.');

@@ -125,6 +125,25 @@ export function tripCurrency(t: Trip) {
   return Object.entries(n).sort((a, b) => b[1] - a[1])[0]?.[0] || "HKD";
 }
 
+/** Currency a new expense starts in: the one last used on this trip, else the one its prices use, else a guess from the time zone. */
+const ZONE_CURRENCY: Record<string, string> = { "Asia/Tokyo": "JPY", "Asia/Taipei": "TWD", "Asia/Shanghai": "CNY", "Asia/Urumqi": "CNY", "Asia/Chongqing": "CNY", "Asia/Seoul": "KRW", "Asia/Bangkok": "THB", "Asia/Singapore": "SGD", "Asia/Kuala_Lumpur": "MYR", "Asia/Manila": "PHP", "Asia/Jakarta": "IDR", "Asia/Bali": "IDR", "Asia/Makassar": "IDR", "Asia/Kolkata": "INR", "Europe/London": "GBP", "Europe/Zurich": "CHF", "Europe/Stockholm": "SEK", "Europe/Oslo": "NOK", "Europe/Copenhagen": "DKK", "Europe/Prague": "CZK", "Europe/Budapest": "HUF", "Europe/Warsaw": "PLN", "Europe/Istanbul": "TRY", "Atlantic/Reykjavik": "ISK", "America/Mexico_City": "MXN", "America/Sao_Paulo": "BRL", "Africa/Johannesburg": "ZAR", "Pacific/Auckland": "NZD", "America/Toronto": "CAD", "America/Vancouver": "CAD" };
+export function zoneCurrency(zone?: string) {
+  if (!zone) return "";
+  if (ZONE_CURRENCY[zone]) return ZONE_CURRENCY[zone];
+  if (zone.startsWith("Australia/")) return "AUD";
+  if (zone.startsWith("America/")) return "USD";
+  if (zone.startsWith("Europe/")) return "EUR";
+  return "";
+}
+export function usualCurrency(t: Trip): { currency: string; rate?: number } {
+  const last = t.expenseCurrency || "";
+  const used = tripCurrency(t);
+  const currency = (last && currencies.includes(last) ? last : "") || (used !== "HKD" ? used : "") || zoneCurrency(t.timezone) || "HKD";
+  if (currency === "HKD") return { currency };
+  const seen = [...t.expenses].reverse().find((e) => e.currency === currency && e.rate > 0 && e.rate !== 1)?.rate;
+  return { currency, rate: t.rates?.[currency] || seen };
+}
+
 export function readMoney(f: FormData, prefix: string): Money | undefined {
   const raw = String(f.get(prefix + "-amount") || "").trim();
   const n = Number(raw);

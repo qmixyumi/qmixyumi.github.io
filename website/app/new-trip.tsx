@@ -35,11 +35,13 @@ import {keepFiles} from './attachments';
 import {saveValue,readValue,ago} from './drafts';
 type ImportDraft={name:string;destination:string;start:string;end:string;budget:string;rows:ImportRow[];raw:string;dateChoices:DateChoice[];files:string[]};
 export type ImportResult={stops:Stop[];tickets:Ticket[];attachments:Awaited<ReturnType<typeof keepFiles>>;entries:QuestEntry[]};
-export default function NewTrip({onCreate,into,onImport}:{onCreate:(trip:Trip,quest:QuestEntry[])=>void;into?:Trip;onImport?:(result:ImportResult)=>void}){
+export default function NewTrip({onCreate,into,onImport,initialFiles}:{onCreate:(trip:Trip,quest:QuestEntry[])=>void;into?:Trip;onImport?:(result:ImportResult)=>void;initialFiles?:File[]}){
  const [addQuest,setAddQuest]=useState(true);
  const [name,setName]=useState(''),[destination,setDestination]=useState(''),[start,setStart]=useState(into?.start||''),[end,setEnd]=useState(into?.end||''),[budget,setBudget]=useState('10000'),[files,setFiles]=useState<File[]>([]),[rows,setRows]=useState<ImportRow[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[error,setError]=useState(''),[raw,setRaw]=useState(''),[reviewed,setReviewed]=useState(false),[parsed,setParsed]=useState(false),[drag,setDrag]=useState(false);
  const [dateChoices,setDateChoices]=useState<DateChoice[]>([]);
  const input=useRef<HTMLInputElement>(null),controller=useRef<AbortController|null>(null);useEffect(()=>()=>controller.current?.abort(),[]);
+ // Files picked on the attachments page start reading straight away.
+ useEffect(()=>{if(initialFiles?.length)choose(initialFiles)},[]);
  // Import review in progress is kept on this device, so a closed window or reload does not lose the checked rows.
  const draftKey='import:'+(into?.id||'new');const [restore,setRestore]=useState(()=>readValue<ImportDraft>(draftKey));const [restoredFiles,setRestoredFiles]=useState<string[]>([]);
   // A new trip starts with one clear choice; the file route only opens the review area once a file has been read.

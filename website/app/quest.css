@@ -279,3 +279,11 @@ main.quest-active{padding:24px}.quest-active>.page-heading{display:none}.quest-a
  .q-kinds small{display:none}
  .q-metric-editor{grid-template-columns:40px minmax(0,1fr);}.q-metric-editor .q-btn{grid-column:span 1}
 }
+/* Hotel list: add-hotel first, folder and metric settings tucked away. */
+.quest .q-create-top{margin:10px 0 6px;grid-template-columns:minmax(0,1fr)}
+.quest .q-create-top .q-btn{white-space:nowrap}
+.quest .q-hotel-settings{margin-top:14px;border-top:1.5px dashed var(--btn-line);padding-top:10px}
+.quest .q-hotel-settings summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--text)}
+.quest .q-hotel-settings .q-muted{margin:8px 0}
+.quest .q-hotel-settings .q-folder-actions{grid-template-columns:repeat(2,1fr)}
+.quest .q-head-side{align-items:center}

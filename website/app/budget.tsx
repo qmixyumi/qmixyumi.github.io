@@ -136,16 +136,12 @@ export function zoneCurrency(zone?: string) {
   return "";
 }
 export function usualCurrency(t: Trip): { currency: string; rate?: number } {
-  let last = "";
-  try { last = localStorage.getItem("adventure-currency:" + t.id) || ""; } catch { /* private mode */ }
+  const last = t.expenseCurrency || "";
   const used = tripCurrency(t);
   const currency = (last && currencies.includes(last) ? last : "") || (used !== "HKD" ? used : "") || zoneCurrency(t.timezone) || "HKD";
   if (currency === "HKD") return { currency };
   const seen = [...t.expenses].reverse().find((e) => e.currency === currency && e.rate > 0 && e.rate !== 1)?.rate;
   return { currency, rate: t.rates?.[currency] || seen };
-}
-export function rememberCurrency(t: Trip, currency: string) {
-  try { localStorage.setItem("adventure-currency:" + t.id, currency); } catch { /* private mode */ }
 }
 
 export function readMoney(f: FormData, prefix: string): Money | undefined {

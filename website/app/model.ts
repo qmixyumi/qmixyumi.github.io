@@ -8,7 +8,7 @@ export type Stop={shots?:Shot[];lat?:number;lng?:number;deletedAt?:string;id:str
 /** A price typed on a stop (cost of the stop itself) or on the leg to the next stop (fare). */
 export type Money={amount:number;currency:string};
 export type Expense={source?:string;split?:Split;deletedAt?:string;id:string;title:string;amount:number;currency:string;rate:number;payer:string;people:string[];status:string;category:string;date:string};
-export type Trip={people?:string[];budgets?:Record<string,number>;rates?:Record<string,number>;settlements?:Settlement[];deletedAt?:string;timezone?:string;id:string;name:string;destination:string;start:string;end:string;budget:number;attachments?:Attachment[];tickets?:Ticket[];stops:Stop[];expenses:Expense[];checks:{deletedAt?:string;id:string;title:string;done:boolean}[];notes:{deletedAt?:string;id:string;date:string;text:string;photo?:string;gallery?:{photo:string;deletedAt?:string}[]}[]};
+export type Trip={expenseCurrency?:string;people?:string[];budgets?:Record<string,number>;rates?:Record<string,number>;settlements?:Settlement[];deletedAt?:string;timezone?:string;id:string;name:string;destination:string;start:string;end:string;budget:number;attachments?:Attachment[];tickets?:Ticket[];stops:Stop[];expenses:Expense[];checks:{deletedAt?:string;id:string;title:string;done:boolean}[];notes:{deletedAt?:string;id:string;date:string;text:string;photo?:string;gallery?:{photo:string;deletedAt?:string}[]}[]};
 export type Data={version:1;trips:Trip[];photos?:Attachment[];quest?:QuestData};
 export const kinds:Record<string,string>={景點:'⛩',美食:'🍜',酒店:'🏯',交通:'🚃',購物:'🎁',活動:'🎟',日常:'🌿'};
 export const statusList=['想去','已安排','已預訂','已到訪','取消'];

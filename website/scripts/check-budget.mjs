@@ -57,5 +57,6 @@ assert.equal(syncAll(g),false,'a trip without prices gets no automatic rows');
 // A new expense starts in the trip's usual currency: a Kyoto trip with no prices yet still starts in JPY.
 assert.equal(zoneCurrency('Asia/Tokyo'),'JPY');assert.equal(zoneCurrency('Europe/Paris'),'EUR');assert.equal(zoneCurrency('Asia/Hong_Kong'),'');
 {const k={...structuredClone(g.trips[0]),id:'kyoto-test',timezone:'Asia/Tokyo',expenses:[],tickets:[],stops:[],rates:{JPY:0.05}};const u=usualCurrency(k);assert.equal(u.currency,'JPY');assert.equal(u.rate,0.05);
-assert.equal(usualCurrency({...k,timezone:'Asia/Hong_Kong'}).currency,'HKD');}
+assert.equal(usualCurrency({...k,timezone:'Asia/Hong_Kong'}).currency,'HKD');
+assert.equal(usualCurrency({...k,expenseCurrency:'HKD'}).currency,'HKD','the currency last used on the trip wins');}
 console.log('PASS: leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average, fewest repayments and the usual trip currency.');

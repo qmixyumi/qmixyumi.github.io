@@ -27,9 +27,9 @@ body .app .prep-items button small{font-size:12.5px;color:#4a4f6b}
 /* 2 · plan page: one-line date, folded time chart */
 body .app .plan-day-head h2{margin:0}
 body .app .plan-day-head .day-count{font-size:13px;font-weight:600;color:#4a4f6b;margin-left:4px;white-space:nowrap}
-body .app .ribbon-fold{margin:0 0 12px}
-body .app .ribbon-fold>summary{cursor:pointer;font-size:13px;font-weight:700;color:#3a3f5c;padding:4px 0;list-style-position:inside}
-body .app .ribbon-fold[open]>summary{margin-bottom:6px}
+body .app .time-overview{margin:0 0 12px}
+body .app .time-overview>summary{cursor:pointer;font-size:13px;font-weight:700;color:#3a3f5c;padding:4px 0;list-style-position:inside}
+body .app .time-overview[open]>summary{margin-bottom:6px}
 
 /* 6 · ticket form */
 body .app .field .req,body .app .field .opt{font-style:normal;font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px;vertical-align:1px}
@@ -50,7 +50,7 @@ body .app .money-first input[name=amount]{font-size:20px;font-weight:700}
  /* Plan page first screen: hide the big page title on inner tabs, compact day chips and buttons. */
  body .app.tab-other .page-heading h1{font-size:20px}
  body .app .days{margin:0 0 10px;gap:8px;padding-bottom:6px}
- body .app .days button{min-width:0;flex:none;padding:6px 10px;display:flex;align-items:baseline;gap:6px;border-radius:10px}
+ body .app .days button,body .app .days button.current{min-width:0;min-height:0;flex:none;padding:6px 10px;display:flex;flex-direction:row;align-items:baseline;gap:6px;border-radius:10px}
  body .app .days small{font-size:12px;letter-spacing:0;margin:0}
  body .app .days strong{margin:0;font-size:15px}
  body .app .days span{display:none}
@@ -67,6 +67,11 @@ body .app .money-first input[name=amount]{font-size:20px;font-weight:700}
  body .app .timeline.panel{padding-top:12px}
  body .app .timeline .section-title{margin-bottom:6px}
  body .app .prep-items{grid-template-columns:1fr}
+ /* The plan tab is named in the menu; its big title gives way to the first stop. */
+ body .app.tab-plan .page-heading{display:none}
+ body .app.tab-plan .timeline.panel>.section-title{margin:0 0 2px}
+ body .app.tab-plan .timeline.panel>.section-title h2{font-size:17px}
+ body .app.tab-plan .time-overview summary{min-height:32px}
 }
 body .app .field>span{color:#3a4434;font-size:13px}
 body.game .app .field>span{color:#2f3450}

@@ -21,3 +21,9 @@ assert.deepEqual(rankingPages(Array.from({length:41},()=>food)).map(p=>p.length)
 const {syncAttachments}=await import(url(await source('app/attachment-sync.ts')));
 const cloud=await syncAttachments(data,{storage:{from:()=>({})}},async()=>undefined,()=>{});assert.deepEqual(cloud.quest,q);assert.notEqual(cloud.quest,q);
 console.log('PASS: incomplete and zero ratings, spice exclusion, breakfast opt-in, reverse metrics, grade boundaries, old/new backup compatibility, invalid records, PNG pagination and cloud payload preservation.');
+
+// Rides (機動遊戲) use their own five metrics; queue time and stamina count lower-is-better.
+{const {RIDE_METRICS}=await import(modelUrl);const q2=emptyQuest();const r={...newQuestEntry('spot'),spotType:'ride',scores:{thrill:8,queue:2,gforce:6,stamina:4,experience:10}};
+assert.equal(RIDE_METRICS.length,5);assert.equal(questScore(r,q2.metrics.spot),(8+8+6+6+10)/5);
+const s2={...r,spotType:'spot'};assert.equal(questScore(s2,q2.metrics.spot),null);
+console.log('PASS: spot vs ride metrics.')}

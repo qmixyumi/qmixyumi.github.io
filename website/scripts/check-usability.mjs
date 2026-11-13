@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import ts from 'typescript';
 const moduleURL=code=>'data:text/javascript;base64,'+Buffer.from(ts.transpileModule(code,{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText).toString('base64');
 const load=async path=>import(moduleURL(await readFile(path,'utf8')));
-const {demo,validData}=await load('app/model.ts');const {alive,visibleTrip,markDeleted,trashRows,localDate,todayDay}=await load('app/travel-tools.ts');const {mergeData}=await load('app/sync-merge.ts');
+const {demo,validData}=await load('app/model.ts');const {alive,tripsOnDate,visibleTrip,markDeleted,trashRows,localDate,todayDay}=await load('app/travel-tools.ts');const {mergeData}=await load('app/sync-merge.ts');
 const d=demo(),id=d.trips[0].id;d.trips[0].expenses=[{id:'e',title:'Lunch',amount:200,currency:'HKD',rate:1,payer:'QMI',people:['QMI'],status:'已付',category:'美食',date:'2026-11-20'}];d.trips[0].notes=[{id:'n',date:'2026-11-20',text:'Memory'}];d.trips[0].tickets=[{id:'t',type:'train',from:'A',to:'B',departure:'2026-11-20T10:00',arrival:'',departureZone:'',arrivalZone:'',number:'1',boarding:'',seat:'',cabin:'',currency:'HKD',fare:null,note:''}];
 for(const kind of ['stops','expenses','notes','tickets','checks']){const x=d.trips[0][kind][0],count=d.trips[0][kind].length;markDeleted(d,kind,id,x.id,true);assert.equal(visibleTrip(d.trips[0])[kind].length,count-1);assert.ok(trashRows(d).some(r=>r.id===x.id));assert.ok(validData(d));markDeleted(d,kind,id,x.id,false);assert.equal(visibleTrip(d.trips[0])[kind].length,count)}
 const base=structuredClone(d),removed=structuredClone(d),edited=structuredClone(d);markDeleted(removed,'stops',id,removed.trips[0].stops[0].id,true);edited.trips[0].stops[0].title='Other edit';assert.equal(mergeData(base,removed,edited).conflicts.length,1,'delete versus edit needs a choice');assert.equal(visibleTrip(mergeData(base,removed,base).data.trips[0]).stops.length,base.trips[0].stops.length-1);
@@ -19,3 +19,24 @@ setFailure(true);await assert.rejects(migratePhotos(original),/storage full/);as
 const missing=structuredClone(migrated);missing.photos=[];assert.equal(validData(missing),false);
 const prose=demo();prose.trips[0].stops[0].note='data:image/ mentioned in prose';assert.equal(hasInlinePhotos(prose),false);
 console.log('PASS: recoverable deletion for all six record types, delete/edit conflict, timezone boundaries, deterministic photo migration, deduplication, failure preservation and reference validation.');
+
+// Calendar regression: overlapping live/deleted trips, deleted-only dates and restoration.
+const calendarData=demo();const kyoto=calendarData.trips[0];
+calendarData.trips.push({...structuredClone(kyoto),id:'test-calendar',name:'Test',start:'2026-11-16',end:'2026-11-20'}, {...structuredClone(kyoto),id:'changsha-calendar',name:'長沙',start:'2026-11-21',end:'2026-11-23'});
+const names=date=>tripsOnDate(calendarData.trips,date).map(t=>t.name);
+assert.equal(names('2026-11-20').length,2);
+markDeleted(calendarData,'trips',kyoto.id,kyoto.id,true);
+markDeleted(calendarData,'trips','test-calendar','test-calendar',true);
+const beforeRead=structuredClone(calendarData);
+assert.deepEqual(names('2026-11-16'),[],'deleted-only day has no highlight or day links');
+assert.deepEqual(names('2026-11-20'),[]);
+assert.deepEqual(names('2026-11-21'),['長沙']);
+assert.deepEqual(names('2026-11-23'),['長沙'],'end date remains inclusive');
+assert.deepEqual(names('2026-11-24'),[]);
+assert.deepEqual(calendarData,beforeRead,'calendar query must not remove stored trips');
+assert.equal(trashRows(calendarData).filter(r=>r.kind==='trips').length,2);
+markDeleted(calendarData,'trips',kyoto.id,kyoto.id,false);
+assert.ok(names('2026-11-20').includes(kyoto.name),'restored trip returns to calendar');
+assert.equal(names('2026-11-21').length,2,'overlapping active trips remain visible');
+assert.deepEqual(tripsOnDate([], '2026-11-21'),[]);
+console.log('PASS: calendar hides recycled trips, keeps active overlaps and restores trips without data loss.');

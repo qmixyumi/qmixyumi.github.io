@@ -1,5 +1,7 @@
 import type {Data,Trip} from './model';
 export const alive=<T extends {deletedAt?:string}>(items:T[])=>items.filter(x=>!x.deletedAt);
+/** Calendar cells and day details share the same recoverable-deletion filter. */
+export const tripsOnDate=(trips:Trip[],date:string)=>alive(trips).filter(t=>t.start<=date&&t.end>=date);
 export function visibleTrip(t:Trip):Trip{return {...t,settlements:alive(t.settlements||[]),stops:alive(t.stops),expenses:alive(t.expenses),checks:alive(t.checks),notes:alive(t.notes),tickets:alive(t.tickets||[])}}
 export type BinKind='trips'|'stops'|'expenses'|'tickets'|'notes'|'checks'|'settlements';
 export type BinRow={kind:BinKind;id:string;tripId:string;title:string;at:string};

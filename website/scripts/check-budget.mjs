@@ -8,7 +8,7 @@ const {demo,validData,tripPeople}=model;
 const amountFn='const amount=v=>new Intl.NumberFormat("en-HK",{maximumFractionDigits:2}).format(v);';
 const {balances,perPerson,transfers}=await load('app/split.ts',amountFn);
 const helpers=amountFn+'const kinds='+JSON.stringify(model.kinds)+';const dateAt=(t,d)=>new Date(Date.parse(t.start)+(d-1)*86400000).toISOString().slice(0,10);const tripPeople=t=>t.people&&t.people.length?t.people:["QMI","YUMI"];const currencies=["HKD","CNY"];const colorOf=()=>"#000";const travelIcon=()=>"";const _jsx=()=>null,_jsxs=()=>null,_Fragment=null;const useState=v=>[v,()=>{}],useEffect=()=>{},useRef=v=>({current:v});';
-const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency}=await load('app/budget.tsx',helpers);
+const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
 
 const d=demo(),t=d.trips[0];
 t.expenses=[];t.tickets=[];
@@ -59,4 +59,42 @@ assert.equal(zoneCurrency('Asia/Tokyo'),'JPY');assert.equal(zoneCurrency('Europe
 {const k={...structuredClone(g.trips[0]),id:'kyoto-test',timezone:'Asia/Tokyo',expenses:[],tickets:[],stops:[],rates:{JPY:0.05}};const u=usualCurrency(k);assert.equal(u.currency,'JPY');assert.equal(u.rate,0.05);
 assert.equal(usualCurrency({...k,timezone:'Asia/Hong_Kong'}).currency,'HKD');
 assert.equal(usualCurrency({...k,expenseCurrency:'HKD'}).currency,'HKD','the currency last used on the trip wins');}
-console.log('PASS: leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average, fewest repayments and the usual trip currency.');
+
+// 評分圖鑑 prices: hotel per night × nights, spot tickets × travellers, food price; linked to the trip they came from.
+assert.deepEqual(parsePrice('792.75','CNY'),{amount:792.75,currency:'CNY'});
+assert.deepEqual(parsePrice('HK$1,220','CNY'),{amount:1220,currency:'HKD'});
+assert.deepEqual(parsePrice('¥68','HKD'),{amount:68,currency:'CNY'});
+assert.deepEqual(parsePrice('80元','CNY'),{amount:80,currency:'CNY'});assert.deepEqual(parsePrice('80元','JPY'),{amount:80,currency:'CNY'});
+assert.deepEqual(parsePrice('CNY 45','HKD'),{amount:45,currency:'CNY'});
+assert.equal(parsePrice('免費','HKD'),undefined);
+{const q=demo();const t=q.trips[0];t.id='cs';t.name='長沙';t.start='2026-11-21';t.end='2026-11-23';t.expenses=[];t.tickets=[];t.rates={CNY:1.1};
+ t.stops=[{id:'h1',day:1,time:'15:00',end:'',title:'單一酒店',kind:'酒店',place:'',note:'',status:'待定',travel:'',minutes:0,rating:{}},{id:'f1',day:2,time:'12:00',end:'',title:'文和友',kind:'美食',place:'',note:'',status:'待定',travel:'',minutes:0,rating:{},cost:{amount:300,currency:'CNY'}}];
+ const base={folder:'',region:'',category:'',room:'',price:'',ticket:'',ride:'',duration:'',seasons:[],spice:'',review:'',notes:'',photo:'',breakfast:false,scores:{},created:1};
+ q.quest={version:1,folders:[],metrics:Object.fromEntries(['hotel','spot','food'].map(k=>[k,[{id:'m',name:'m',color:'#aaaaaa',reverse:false}]])),entries:[
+  {...base,id:'qh',kind:'hotel',name:'單一酒店',price:'792.75'},
+  {...base,id:'qs',kind:'spot',name:'橘子洲',ticket:'¥50',ride:'免費',trip:'cs'},
+  {...base,id:'qf',kind:'food',name:'文和友',price:'¥200'},
+  {...base,id:'qn',kind:'food',name:'無名小店',price:'¥30'},
+  {...base,id:'qx',kind:'food',name:'唔計',price:'¥30',trip:'none'}]};
+ assert.equal(questLink(q.quest.entries[0],q).how,'matched','a hotel with the same name as a stop is linked by itself');
+ assert.equal(questLink(q.quest.entries[3],q).how,'unmatched');
+ syncAll(q);
+ const h=t.expenses.find(e=>e.source==='quest:qh');assert.ok(h,'hotel counted');assert.equal(h.amount,1585.5,'one hotel on a 3-day trip = 2 nights');assert.equal(h.category,'酒店');assert.equal(h.currency,'CNY');assert.equal(h.date,'2026-11-21');
+ const s=t.expenses.find(e=>e.source==='quest:qs');assert.equal(s.amount,100,'spot ticket per person × 2 travellers');
+ assert.equal(t.expenses.some(e=>e.source==='questride:qs'),false,'免費 adds nothing');
+ assert.equal(t.expenses.some(e=>e.source==='quest:qf'),false,'stop already has its own cost: not counted twice');
+ assert.ok(t.expenses.some(e=>e.source==='stop:f1'));
+ assert.equal(t.expenses.some(e=>/qn|qx/.test(e.source||'')),false,'unlinked and opted-out entries stay out');
+ q.quest.entries[0].nights=1;syncAll(q);assert.equal(t.expenses.find(e=>e.source==='quest:qh').amount,792.75,'typed nights win');
+ // Deleting an automatic row (a duplicate) keeps it deleted: sync does not bring it back.
+ t.expenses.find(e=>e.source==='quest:qh').deletedAt='2026-11-13T00:00:00Z';syncAll(q);
+ assert.equal(t.expenses.filter(e=>e.source==='quest:qh').length,1);assert.ok(t.expenses.find(e=>e.source==='quest:qh').deletedAt);
+ // Removing the atlas entry removes its live row.
+ q.quest.entries=q.quest.entries.filter(e=>e.id!=='qs');syncAll(q);assert.equal(t.expenses.some(e=>e.source==='quest:qs'),false);
+ assert.ok(validData(q));
+ const bq=structuredClone(q);bq.quest.entries[0].nights=-2;assert.equal(validData(bq),false,'no negative nights');
+ // Possible duplicates: a hand-typed hotel row on the same day with the same HKD amount is flagged.
+ delete t.expenses.find(e=>e.source==='quest:qh').deletedAt;
+ t.expenses.push({id:'dup',title:'酒店住宿',amount:872.03,currency:'HKD',rate:1,payer:'QMI',people:['QMI','YUMI'],status:'已付',category:'酒店',date:'2026-11-21'});
+ const dd=likelyDuplicates(t);assert.ok(dd.has('dup')&&dd.has('auto-quest-qh'));assert.equal(dd.has('auto-stop-f1'),false);}
+console.log('PASS: atlas prices linked to trips without double counting, duplicate flags, leg fares, stop costs and ticket fares counted automatically (kept in step, rates, removal), category budgets and travellers validation, per-head average, fewest repayments and the usual trip currency.');

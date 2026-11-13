@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { kinds, dateAt, amount, tripPeople, type Data, type Trip, type Stop, type Expense, type Money } from "./model";
 import { currencies } from "./extras";
 import { colorOf, travelIcon } from "./plan-visual";
+import type { QuestData, QuestEntry } from "./quest-model";
 import "./budget.css";
 // Automatic spending: prices typed on stops, on the legs between stops and on tickets become
 // expenses in 旅費帳簿 by themselves (one per source, id "auto-…", field `source`), so nobody adds them up by hand.
@@ -20,8 +21,9 @@ export function nextStop(t: Trip, s: Stop) {
 }
 
 type Source = { key: string; title: string; money: Money; category: string; date: string };
-export function autoSources(t: Trip): Source[] {
+export function autoSources(t: Trip, d?: Data): Source[] {
   const out: Source[] = [];
+  if (d?.quest) for (const e of d.quest.entries) for (const c of questCharges(e, d)) if (c.trip.id === t.id && !c.skip) out.push(c);
   for (const s of liveStops(t)) {
     if (s.day < 1) continue;
     const date = dateAt(t, s.day);
@@ -56,13 +58,120 @@ export function rateFor(t: Trip, cur: string, existing?: Expense): number | null
   return manual.length ? manual[manual.length - 1].rate : null;
 }
 
+// ---------- 評分圖鑑 prices ----------
+// Hotel price per night, spot tickets and food prices typed in the cross-trip atlas also become automatic
+// expenses. An entry belongs to the trip it was imported from (entry.trip / entry.stop), or the trip the user
+// picked, or else the only trip that has a stop with the same name. entry.trip === "none" keeps it out of the budget.
+// When that stop already has its own price (stop.cost) the stop wins, so nothing is counted twice.
+const QUEST_KIND: Record<string, string> = { hotel: "酒店", spot: "景點", food: "美食" };
+const tripDays = (t: Trip) => Math.max(1, Math.round((Date.parse(t.end) - Date.parse(t.start)) / 86400000) + 1);
+const sameName = (e: QuestEntry, s: Stop) => !!e.name && (e.name === s.title.slice(0, 100) || s.title.includes(e.name));
+const matchStops = (e: QuestEntry, t: Trip) => liveStops(t).filter((s) => s.kind === QUEST_KIND[e.kind] && sameName(e, s));
+
+export type QuestLink = { trip?: Trip; stops: Stop[]; how: "picked" | "imported" | "matched" | "none" | "many" | "unmatched" };
+export function questLink(e: QuestEntry, d: Data): QuestLink {
+  if (e.trip === "none") return { stops: [], how: "none" };
+  const trips = d.trips.filter((t) => !t.deletedAt);
+  if (e.trip) {
+    const t = trips.find((x) => x.id === e.trip);
+    if (t) {
+      const own = e.stop ? liveStops(t).filter((s) => s.id === e.stop) : [];
+      return { trip: t, stops: own.length ? [...own, ...matchStops(e, t).filter((s) => s.id !== e.stop)] : matchStops(e, t), how: e.stop ? "imported" : "picked" };
+    }
+  }
+  const hits = trips.filter((t) => t.id !== "demo").map((t) => ({ trip: t, stops: matchStops(e, t) })).filter((x) => x.stops.length);
+  if (hits.length === 1) return { ...hits[0], how: "matched" };
+  return { stops: [], how: hits.length > 1 ? "many" : "unmatched" };
+}
+
+/** Reads a typed price such as "792.75", "HK$220", "¥120", "80元" or "CNY 80". "免費" or no number gives nothing. */
+export function parsePrice(text: string, fallback: string): Money | undefined {
+  const raw = (text || "").replace(/,/g, "").trim();
+  const m = raw.match(/\d+(?:\.\d+)?/);
+  if (!m) return undefined;
+  const n = Math.round(Number(m[0]) * 100) / 100;
+  if (!(n > 0)) return undefined;
+  const up = raw.toUpperCase();
+  const code = currencies.find((c) => new RegExp("(^|[^A-Z])" + c + "([^A-Z]|$)").test(up));
+  let currency = code || "";
+  if (!currency) {
+    if (/HK\$|港幣|港元|港紙/.test(up)) currency = "HKD";
+    else if (/NT\$|台幣|新台幣/.test(up)) currency = "TWD";
+    else if (/US\$|美元|美金/.test(up)) currency = "USD";
+    else if (/S\$|新加坡/.test(up)) currency = "SGD";
+    else if (/A\$|澳元|澳幣/.test(up)) currency = "AUD";
+    else if (/円|日圓|日元/.test(up)) currency = "JPY";
+    else if (/₩|韓圜|韓元/.test(up)) currency = "KRW";
+    else if (/฿|泰銖/.test(up)) currency = "THB";
+    else if (/€|歐元/.test(up)) currency = "EUR";
+    else if (/£|英鎊/.test(up)) currency = "GBP";
+    else if (/RMB|人民幣/.test(up)) currency = "CNY";
+    else if (/[¥￥]/.test(up)) currency = fallback === "JPY" ? "JPY" : "CNY";
+    else if (/元|蚊/.test(up)) currency = ["CNY", "TWD", "HKD"].includes(fallback) ? fallback : "CNY";
+    else currency = fallback;
+  }
+  return { amount: n, currency: currencies.includes(currency) ? currency : fallback };
+}
+
+/** Nights to charge for a hotel: the number typed on the entry, else the whole trip when it has one hotel, else the days the hotel is on the plan. */
+export function hotelNights(e: QuestEntry, t: Trip, stops: Stop[]) {
+  if (e.nights && e.nights > 0) return Math.min(365, Math.round(e.nights));
+  const hotels = new Set(liveStops(t).filter((s) => s.kind === "酒店").map((s) => s.title));
+  if (hotels.size <= 1 || stops.length === 0) return Math.max(1, tripDays(t) - 1);
+  return Math.max(1, new Set(stops.map((s) => s.day)).size);
+}
+
+export type QuestCharge = Source & { trip: Trip; skip?: Stop; note: string };
+/** What one atlas entry adds to a trip's budget. `skip` names the stop whose own price is counted instead. */
+export function questCharges(e: QuestEntry, d: Data): QuestCharge[] {
+  const link = questLink(e, d);
+  const t = link.trip;
+  if (!t || t.deletedAt) return [];
+  const fallback = tripCurrency(t);
+  const priced = link.stops.find((s) => s.cost && s.cost.amount > 0);
+  const first = [...link.stops].sort((a, b) => a.day - b.day || a.time.localeCompare(b.time))[0];
+  const date = first && first.day >= 1 ? dateAt(t, first.day) : t.start;
+  const out: QuestCharge[] = [];
+  const add = (key: string, title: string, price: Money | undefined, times: number, note: string) => {
+    if (!price) return;
+    out.push({ key, title, money: { amount: Math.round(price.amount * times * 100) / 100, currency: price.currency }, category: QUEST_KIND[e.kind], date, trip: t, skip: priced, note: times > 1 ? `${price.currency} ${amount(price.amount)} × ${note}` : "" });
+  };
+  if (e.kind === "hotel") {
+    const n = hotelNights(e, t, link.stops);
+    add("quest:" + e.id, `${e.name}（${n} 晚）`, parsePrice(e.price, fallback), n, n + " 晚");
+  } else if (e.kind === "spot") {
+    const n = tripPeople(t).length;
+    add("quest:" + e.id, `門票：${e.name}`, parsePrice(e.ticket, fallback), n, n + " 人");
+    add("questride:" + e.id, `遊玩項目：${e.name}`, parsePrice(e.ride, fallback), n, n + " 人");
+  } else add("quest:" + e.id, e.name, parsePrice(e.price, fallback), 1, "");
+  return out;
+}
+
+/** Rows in the ledger that look like the same spending twice: same day and same HKD amount, or same day and same name. */
+export function likelyDuplicates(t: Trip): Set<string> {
+  const live = t.expenses.filter((e) => !e.deletedAt);
+  const out = new Set<string>();
+  const norm = (s: string) => s.replace(/[\s（）()：:·→>\-]/g, "").replace(/^(門票|遊玩項目)/, "").toLowerCase();
+  for (let i = 0; i < live.length; i++)
+    for (let j = i + 1; j < live.length; j++) {
+      const a = live[i], b = live[j];
+      if (a.date !== b.date) continue;
+      const ha = a.amount * a.rate, hb = b.amount * b.rate;
+      const sameMoney = ha >= 30 && Math.abs(ha - hb) <= Math.max(1, ha * 0.01);
+      const na = norm(a.title), nb = norm(b.title);
+      const sameName = na.length > 1 && (na === nb || na.includes(nb) && nb.length > 1 || nb.includes(na));
+      if (sameMoney || sameName) out.add(a.id).add(b.id);
+    }
+  return out;
+}
+
 export const autoId = (key: string) => "auto-" + key.replace(":", "-");
 
 /** Brings the automatic rows of one trip in line with its prices. Payer, people, split and status that someone changed are kept. */
-export function syncAuto(t: Trip): boolean {
+export function syncAuto(t: Trip, d?: Data): boolean {
   const before = JSON.stringify(t.expenses);
   const who = tripPeople(t);
-  const sources = autoSources(t);
+  const sources = autoSources(t, d);
   const keep = new Set(sources.map((s) => autoId(s.key)));
   const next: Expense[] = t.expenses.filter((e) => !e.source || keep.has(e.id) || e.deletedAt);
   for (const src of sources) {
@@ -101,13 +210,13 @@ export function syncAuto(t: Trip): boolean {
 
 export function syncAll(d: Data): boolean {
   let changed = false;
-  for (const t of d.trips) if (!t.deletedAt && syncAuto(t)) changed = true;
+  for (const t of d.trips) if (!t.deletedAt && syncAuto(t, d)) changed = true;
   return changed;
 }
 
 /** Currencies of automatic prices that have no exchange rate yet, so they are not counted. */
-export function missingRates(t: Trip) {
-  return [...new Set(autoSources(t).map((s) => s.money.currency).filter((c) => rateFor(t, c, t.expenses.find((e) => e.source && e.currency === c)) === null))];
+export function missingRates(t: Trip, d?: Data) {
+  return [...new Set(autoSources(t, d).map((s) => s.money.currency).filter((c) => rateFor(t, c, t.expenses.find((e) => e.source && e.currency === c)) === null))];
 }
 
 /** The currency most used on this trip, for new price fields. */
@@ -283,8 +392,8 @@ export function CategoryBudgets({ trip, onEdit }: { trip: Trip; onEdit: () => vo
 }
 
 /** Asks for (and tries to fetch) exchange rates for automatic prices in a foreign currency. */
-export function RateNotice({ trip, onRate }: { trip: Trip; onRate: (cur: string, rate: number) => void }) {
-  const missing = missingRates(trip);
+export function RateNotice({ trip, data, onRate }: { trip: Trip; data?: Data; onRate: (cur: string, rate: number) => void }) {
+  const missing = missingRates(trip, data);
   const tried = useRef(new Set<string>());
   const [msg, setMsg] = useState("");
   useEffect(() => {

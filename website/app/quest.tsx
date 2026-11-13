@@ -5,7 +5,9 @@ import {MapPin,Sofa,Leaf,Moon,BadgeDollarSign,Coffee,Star,Eye,Tag,Soup,Flame,Can
 import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor} from './quest-model';
 import {saveValue,readValue,ago} from './drafts';
 import './quest.css';
-import type {Stop} from './model';
+import type {Stop,Trip,Data} from './model';
+import {amount} from './model';
+import {questLink,questCharges,hotelNights} from './budget';
 
 const stopKind:Record<string,QuestKind>={酒店:'hotel',美食:'food',景點:'spot'};
 // Old per-stop detailed ratings (收藏圖鑑) mapped onto atlas metrics; QMI/YUMI scores are averaged.
@@ -44,7 +46,26 @@ function Badge({grade,word,small}:{grade:string;word?:string;small?:boolean}){re
 
 async function compressPhoto(file:File){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('請用 10MB 以內嘅 JPG、PNG 或 WebP。');const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');const scale=Math.min(1,800/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let image=canvas.toDataURL('image/jpeg',.75);if(image.length>250000)image=canvas.toDataURL('image/jpeg',.45);if(image.length>250000)throw Error('圖片壓縮後仍太大，請選較細嘅照片。');return image}
 
-export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;person?:string;onPerson?:(p:string)=>void;focus?:string}){
+/** Shows which trip's budget an atlas price goes into, and lets the user pick another trip or leave it out. */
+function BudgetLine({entry,data,trips,onChange}:{entry:QuestEntry;data?:Data;trips:Trip[];onChange:(p:Partial<QuestEntry>)=>void}){
+ if(!data)return null;
+ const link=questLink(entry,data),charges=questCharges(entry,data),t=link.trip;
+ const hasPrice=entry.kind==='spot'?!!(entry.ticket||entry.ride):!!entry.price;
+ const text=link.how==='none'?'唔計入任何旅程嘅旅費。'
+  :link.how==='many'?'有幾個旅程都有同名行程，揀返邊個旅程先會計入旅費。'
+  :link.how==='unmatched'?'未配對到旅程，揀一個旅程先會計入旅費。'
+  :!charges.length?(hasPrice?'睇唔到價錢入面嘅數字，例如寫「HK$220」或「792.75」。':`填咗價錢就會自動記入「${t!.name}」旅費。`)
+  :charges[0].skip?`行程「${charges[0].skip.title}」已經填咗費用，旅費用嗰個，呢度唔會重覆計。`
+  :`已自動記入「${t!.name}」旅費：${charges.map(c=>`${c.money.currency} ${amount(c.money.amount)}${c.note?`（${c.note}）`:''}`).join('、')}`;
+ const ok=charges.length>0&&!charges[0].skip;
+ return <div className={'q-budget-line'+(ok?' on':'')}>
+  <label><span>記入旅費</span><select value={entry.trip||''} onChange={e=>onChange({trip:e.target.value||undefined,stop:undefined})}><option value="">自動（同名行程）</option>{trips.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}<option value="none">唔計入旅費</option></select></label>
+  {entry.kind==='hotel'&&t&&<label><span>晚數</span><input key={entry.id+':'+(entry.nights||0)} type="number" min={1} max={365} inputMode="numeric" defaultValue={entry.nights||''} placeholder={String(hotelNights({...entry,nights:0},t,link.stops))} onBlur={e=>{const n=Math.round(Number(e.target.value));const v=n>0?Math.min(365,n):undefined;if(v!==entry.nights)onChange({nights:v})}}/></label>}
+  <small>{text}</small>
+ </div>
+}
+
+export default function Quest({value,onChange,stops=[],tripName='',focus='',trips=[],tripId='',budgetData}:{value?:QuestData;onChange:(q:QuestData)=>void;stops?:Stop[];tripName?:string;trips?:Trip[];tripId?:string;budgetData?:Data;person?:string;onPerson?:(p:string)=>void;focus?:string}){
  const q=value||emptyQuest();
  const [kind,setKind]=useState<QuestKind>('hotel'),[view,setView]=useState('cards'),[folder,setFolder]=useState('all'),[sort,setSort]=useState('new'),[draft,setDraft]=useState<QuestEntry|null>(null),[metrics,setMetrics]=useState<QuestMetric[]|null>(null),[folderForm,setFolderForm]=useState<{id:string;name:string}|null>(null),[notice,setNotice]=useState(''),[exporting,setExporting]=useState(false),[photoBusy,setPhotoBusy]=useState(false),[exports,setExports]=useState<{url:string;name:string}[]>([]),[hotelId,setHotelId]=useState(''),[newHotel,setNewHotel]=useState('');
  useEffect(()=>()=>exports.forEach(f=>URL.revokeObjectURL(f.url)),[exports]);
@@ -72,8 +93,8 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  function erase(e:QuestEntry){if(window.confirm(`刪除「${e.name}」？可用頁面「撤銷」復原。`))commit(n=>{n.entries=n.entries.filter(x=>x.id!==e.id)})}
  function removeFolder(id:string){const selected=folders.find(f=>f.id===id);if(selected&&window.confirm(`刪除分類「${selected.name}」？入面嘅記錄會保留，移去「未分類」。`)){commit(n=>{n.folders=n.folders.filter(f=>f.id!==id);n.entries.forEach(e=>{if(e.folder===id)e.folder=''})});if(folder===id)setFolder('all')}}
  const importable=stops.filter(s=>!s.deletedAt&&s.status!=='取消'&&stopKind[s.kind]===kind&&!q.entries.some(e=>e.kind===kind&&(e.name===s.title.slice(0,100)||s.title.includes(e.name))));
- const targetFolder=folder==='all'||folder==='none'?'':folder;
- function importStops(){if(!importable.length)return;commit(n=>{for(const s of importable)n.entries.push({...stopToEntry(s,kind,tripName),folder:targetFolder})});setNotice(`已由「${tripName}」加入 ${importable.length} 項；原本喺收藏圖鑑嘅詳細評分已一併轉換。`)}
+ const targetFolder=folder==='all'||folder==='none'?'':folder;const homeTrip=tripId&&tripId!=='demo'&&tripId!=='empty'?tripId:undefined;
+ function importStops(){if(!importable.length)return;commit(n=>{for(const s of importable)n.entries.push({...stopToEntry(s,kind,tripName),folder:targetFolder,...(tripId&&tripId!=='empty'?{trip:tripId,stop:s.id}:{})})});setNotice(`已由「${tripName}」加入 ${importable.length} 項；原本喺收藏圖鑑嘅詳細評分已一併轉換。`)}
  async function photo(file:File){if(!draft)return;const request=++photoRequest.current;const entryId=draft.id;setPhotoBusy(true);try{const image=await compressPhoto(file);if(request===photoRequest.current){edited.current=true;setDraft(d=>d?.id===entryId?{...d,photo:image}:d)}}catch(e){if(request===photoRequest.current)setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{if(request===photoRequest.current)setPhotoBusy(false)}}
  async function hotelPhotoChange(file:File,id:string){setPhotoBusy(true);try{const image=await compressPhoto(file);patch(id,e=>{e.photo=image})}catch(e){setNotice(e instanceof Error?e.message:'未能讀取照片')}finally{setPhotoBusy(false)}}
  async function exportRanking(){setExporting(true);setNotice('');try{const {exportQuestRanking}=await import('./quest-export');const files=await exportQuestRanking({kind,title:theme.title,folder:folder==='all'?'全部':folder==='none'?'未分類':folders.find(f=>f.id===folder)?.name||'',entries:ranked,metrics:kindMetrics,dark:false});setExports(files.map(f=>({url:URL.createObjectURL(f.blob),name:f.name})));setNotice('排行榜 PNG 已準備好，按下面連結下載；每頁最多 20 項。')}catch(e){setNotice(e instanceof Error?e.message:'圖片匯出失敗')}finally{setExporting(false)}}
@@ -84,8 +105,8 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  const header=<header className="q-head">
   <div className="q-brand"><span className="q-logo">{logo}{kind!=='hotel'&&<Star className="q-logo-star"/>}</span><div><h2 className="q-pixel-title">{theme.title}</h2><p>{theme.sub}</p></div></div>
   {kind==='hotel'?<div className="q-head-side"><span className="q-chip-stat">已登記酒店 <b>{all.length}</b> 間 · <b>{folders.length}</b> 個分類</span></div>
-  :kind==='food'?<><div className="q-head-stats"><span>圖鑑 <b>{items.length}</b></span><span>平均 <b>{average===null?'—':num(average)}</b></span><span>最高 <b>{rated.length?num(Math.max(...rated)):'—'}</b></span></div><button className="q-btn q-green" onClick={()=>openDraft(newQuestEntry('food',targetFolder))}><Plus/> 新增美食</button></>
-  :<div className="q-head-side"><button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 指標設定</button><button className="q-btn q-green" onClick={()=>openDraft(newQuestEntry('spot',targetFolder))}><Plus/> 添加景點</button></div>}
+  :kind==='food'?<><div className="q-head-stats"><span>圖鑑 <b>{items.length}</b></span><span>平均 <b>{average===null?'—':num(average)}</b></span><span>最高 <b>{rated.length?num(Math.max(...rated)):'—'}</b></span></div><button className="q-btn q-green" onClick={()=>openDraft({...newQuestEntry('food',targetFolder),trip:homeTrip})}><Plus/> 新增美食</button></>
+  :<div className="q-head-side"><button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 指標設定</button><button className="q-btn q-green" onClick={()=>openDraft({...newQuestEntry('spot',targetFolder),trip:homeTrip})}><Plus/> 添加景點</button></div>}
  </header>;
  const tabs=<div className="q-tabs-row">
   <div className="q-tabs"><button className={'q-btn'+(view==='cards'?' q-green':'')} onClick={()=>setView('cards')}>{kind==='spot'&&<LayoutGrid/>}{kind==='hotel'?'評分冒險':kind==='spot'?'景點列表':'評分圖鑑'}</button><button className={'q-btn'+(view==='rank'?' q-green':'')} onClick={()=>setView('rank')}>{kind==='spot'&&<Trophy/>}{kind==='hotel'?'排名榜':'排行榜'}</button></div>
@@ -143,7 +164,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
  // ---------- Hotel ----------
  const hotelList=items.length?cards:[];
  const hotel=all.find(e=>e.id===hotelId)||hotelList[0]||null;
- function createHotel(){const name=newHotel.trim();if(!name)return;const e={...newQuestEntry('hotel',targetFolder),name:name.slice(0,100)};commit(n=>{n.entries.push(e)});setHotelId(e.id);setNewHotel('')}
+ function createHotel(){const name=newHotel.trim();if(!name)return;const e={...newQuestEntry('hotel',targetFolder),trip:homeTrip,name:name.slice(0,100)};commit(n=>{n.entries.push(e)});setHotelId(e.id);setNewHotel('')}
  function hotelView(){const t=hotel?score(hotel):null,g=questGrade(t);const counted=hotel?activeMetrics(hotel).filter(m=>typeof hotel.scores[m.id]==='number').length:0;
   return <div className="q-hotel">
   <section className="q-panel q-hotel-list">
@@ -160,7 +181,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
    <h3 className="q-panel-title">能力值評分 <span>STAT SCORES</span></h3><p className="q-muted">{kindMetrics.filter(m=>m.id!=='breakfast').length} 項必評；早餐選填，關閉後不計入綜合分</p>
    <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="改酒店名稱" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
    <button className="q-btn" onClick={()=>{if(window.confirm(`重置「${hotel.name}」嘅評分？`))patch(hotel.id,e=>{const r=e.people?RATERS.reduce((x,p)=>withPersonReset(x,p),e):e;r.scores={};return r})}}>重置分數</button>
-   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div>
+   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div><BudgetLine entry={hotel} data={budgetData} trips={trips} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/>
    {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?'#e8d6a0':'#3cb85c'} rest={off?'#f6ecd0':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
    <p className="q-caption">綜合 <b className="q-green-text">{num(t)}</b> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
  
@@ -189,6 +210,8 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
   <label>名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：炒粿條"/></label>
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
   <label>分類<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
+  <label>價錢（全單，可選填）<input maxLength={150} value={d.price} onChange={e=>set({price:e.target.value})} placeholder="例：¥68 或 HK$120"/></label>
+  <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
   <div className="q-field"><span>評分（0 – 10）</span>
    {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={m.name} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id],0)}</b></div>)}
@@ -206,9 +229,10 @@ export default function Quest({value,onChange,stops=[],tripName='',focus=''}:{va
   <div className="q-field"><span>所屬分類</span><div className="q-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
   <label>區域地點<input maxLength={150} value={d.region} onChange={e=>set({region:e.target.value})} placeholder="例：香港・九龍"/></label>
   <div className="q-field"><span>適配季節（可多選）</span><div className="q-pick seasons">{['春','夏','秋','冬'].map(s=><button type="button" key={s} className={(d.seasons.includes(s)?'on ':'')+SEASON_CLASS[s]} onClick={()=>set({seasons:d.seasons.includes(s)?d.seasons.filter(x=>x!==s):['春','夏','秋','冬'].filter(x=>x===s||d.seasons.includes(x))})}>{s}</button>)}</div></div>
-  <label>景區門票<input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：HK$220 或 免費"/></label>
-  <label>游玩項目門票（可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：HK$150（纜車、園區設施等）"/></label>
+  <label>景區門票（每人）<input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：HK$220 或 免費"/></label>
+  <label>游玩項目門票（每人，可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：HK$150（纜車、園區設施等）"/></label>
   <label>建議游玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
+  <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
   <hr className="q-dash"/>
   {kindMetrics.map(m=><div className="q-field q-seg-field" key={m.id}><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><Segments label={`${m.name}`} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id]??0,0)}/10</b></div>)}
   <label>備註（可選填）<textarea maxLength={3000} value={d.notes} onChange={e=>set({notes:e.target.value})} placeholder="交通、注意事項、拍攝位……"/></label>

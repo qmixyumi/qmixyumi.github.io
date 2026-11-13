@@ -53,3 +53,9 @@
 .app .step-node>span{display:grid;place-items:center;width:100%;height:100%}
 .app .board-icon .cat-sticker{width:24px;height:24px;filter:none}
 @media (max-width:640px){.app .leg-form .form-grid{grid-template-columns:1fr}.app .leg-modes{grid-template-columns:repeat(4,1fr)}.app .settle-row{grid-template-columns:1fr 1fr 1fr 1.3fr;font-size:13px}.app .cat-budget-row{grid-template-columns:1fr}.app .cat-budget-nums{grid-column:1}}
+/* Possible duplicate spending in 旅費明細. */
+.app .dup-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:10px 14px;border:2px solid #e9b949;border-radius:12px;background:#fff6dc;font-size:14px}
+.app .dup-bar button{padding:6px 12px}
+.app .dup-tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;color:#8a4b00;background:#ffe2a8;border-radius:999px;padding:1px 8px;vertical-align:middle}
+.app tr.dup-row td{background:#fff8e6}
+.app .table-wrap td .text-btn{margin-left:8px}

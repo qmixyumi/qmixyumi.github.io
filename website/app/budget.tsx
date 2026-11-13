@@ -127,7 +127,12 @@ export function questCharges(e: QuestEntry, d: Data): QuestCharge[] {
   const link = questLink(e, d);
   const t = link.trip;
   if (!t || t.deletedAt) return [];
-  const fallback = tripCurrency(t);
+  const fallback = usualCurrency(t).currency;
+  const picked = e.currency && currencies.includes(e.currency) ? e.currency : "";
+  const read = (text: string) => {
+    const m = parsePrice(text, fallback);
+    return m && picked ? { ...m, currency: picked } : m;
+  };
   const priced = link.stops.find((s) => s.cost && s.cost.amount > 0);
   const first = [...link.stops].sort((a, b) => a.day - b.day || a.time.localeCompare(b.time))[0];
   const date = first && first.day >= 1 ? dateAt(t, first.day) : t.start;
@@ -138,13 +143,22 @@ export function questCharges(e: QuestEntry, d: Data): QuestCharge[] {
   };
   if (e.kind === "hotel") {
     const n = hotelNights(e, t, link.stops);
-    add("quest:" + e.id, `${e.name}（${n} 晚）`, parsePrice(e.price, fallback), n, n + " 晚");
+    add("quest:" + e.id, `${e.name}（${n} 晚）`, read(e.price), n, n + " 晚");
   } else if (e.kind === "spot") {
     const n = tripPeople(t).length;
-    add("quest:" + e.id, `門票：${e.name}`, parsePrice(e.ticket, fallback), n, n + " 人");
-    add("questride:" + e.id, `遊玩項目：${e.name}`, parsePrice(e.ride, fallback), n, n + " 人");
-  } else add("quest:" + e.id, e.name, parsePrice(e.price, fallback), 1, "");
+    add("quest:" + e.id, `門票：${e.name}`, read(e.ticket), n, n + " 人");
+    add("questride:" + e.id, `遊玩項目：${e.name}`, read(e.ride), n, n + " 人");
+  } else add("quest:" + e.id, e.name, read(e.price), 1, "");
   return out;
+}
+
+/** Currency an atlas price is counted in: the one picked, else a symbol typed in the price, else the trip's usual currency. */
+export function questCurrency(e: QuestEntry, d?: Data) {
+  if (e.currency && currencies.includes(e.currency)) return e.currency;
+  const t = d ? questLink(e, d).trip : undefined;
+  const fallback = t ? usualCurrency(t).currency : "HKD";
+  const text = e.kind === "spot" ? e.ticket || e.ride : e.price;
+  return parsePrice(text, fallback)?.currency || fallback;
 }
 
 /** Rows in the ledger that look like the same spending twice: same day and same HKD amount, or same day and same name. */

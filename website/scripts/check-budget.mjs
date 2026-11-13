@@ -8,7 +8,7 @@ const {demo,validData,tripPeople}=model;
 const amountFn='const amount=v=>new Intl.NumberFormat("en-HK",{maximumFractionDigits:2}).format(v);';
 const {balances,perPerson,transfers}=await load('app/split.ts',amountFn);
 const helpers=amountFn+'const kinds='+JSON.stringify(model.kinds)+';const dateAt=(t,d)=>new Date(Date.parse(t.start)+(d-1)*86400000).toISOString().slice(0,10);const tripPeople=t=>t.people&&t.people.length?t.people:["QMI","YUMI"];const currencies=["HKD","CNY"];const colorOf=()=>"#000";const travelIcon=()=>"";const _jsx=()=>null,_jsxs=()=>null,_Fragment=null;const useState=v=>[v,()=>{}],useEffect=()=>{},useRef=v=>({current:v});';
-const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
+const {syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questCurrency,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
 
 const d=demo(),t=d.trips[0];
 t.expenses=[];t.tickets=[];
@@ -86,6 +86,10 @@ assert.equal(parsePrice('免費','HKD'),undefined);
  assert.ok(t.expenses.some(e=>e.source==='stop:f1'));
  assert.equal(t.expenses.some(e=>/qn|qx/.test(e.source||'')),false,'unlinked and opted-out entries stay out');
  q.quest.entries[0].nights=1;syncAll(q);assert.equal(t.expenses.find(e=>e.source==='quest:qh').amount,792.75,'typed nights win');
+ assert.equal(questCurrency(q.quest.entries[0],q),'CNY','no currency picked: the trip currency');
+ q.quest.entries[0].currency='HKD';syncAll(q);{const r=t.expenses.find(e=>e.source==='quest:qh');assert.equal(r.currency,'HKD','picked currency wins');assert.equal(r.rate,1);}
+ assert.equal(questCurrency(q.quest.entries[0],q),'HKD');q.quest.entries[0].currency='CNY';syncAll(q);
+ assert.equal(questCurrency({...q.quest.entries[0],currency:undefined,price:'HK$500'},q),'HKD','a symbol in the price is used when nothing is picked');
  // Deleting an automatic row (a duplicate) keeps it deleted: sync does not bring it back.
  t.expenses.find(e=>e.source==='quest:qh').deletedAt='2026-11-13T00:00:00Z';syncAll(q);
  assert.equal(t.expenses.filter(e=>e.source==='quest:qh').length,1);assert.ok(t.expenses.find(e=>e.source==='quest:qh').deletedAt);

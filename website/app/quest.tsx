@@ -7,7 +7,8 @@ import {saveValue,readValue,ago} from './drafts';
 import './quest.css';
 import type {Stop,Trip,Data} from './model';
 import {amount} from './model';
-import {questLink,questCharges,hotelNights} from './budget';
+import {questLink,questCharges,hotelNights,questCurrency} from './budget';
+import {currencies} from './extras';
 
 const stopKind:Record<string,QuestKind>={酒店:'hotel',美食:'food',景點:'spot'};
 // Old per-stop detailed ratings (收藏圖鑑) mapped onto atlas metrics; QMI/YUMI scores are averaged.
@@ -46,6 +47,8 @@ function Badge({grade,word,small}:{grade:string;word?:string;small?:boolean}){re
 
 async function compressPhoto(file:File){if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024)throw Error('請用 10MB 以內嘅 JPG、PNG 或 WebP。');const bitmap=await createImageBitmap(file);const canvas=document.createElement('canvas');const scale=Math.min(1,800/Math.max(bitmap.width,bitmap.height));canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();let image=canvas.toDataURL('image/jpeg',.75);if(image.length>250000)image=canvas.toDataURL('image/jpeg',.45);if(image.length>250000)throw Error('圖片壓縮後仍太大，請選較細嘅照片。');return image}
 
+/** Currency next to an atlas price; shows the guessed one until the user picks. */
+function CurrencyPick({entry,data,onChange}:{entry:QuestEntry;data?:Data;onChange:(p:Partial<QuestEntry>)=>void}){const cur=questCurrency(entry,data);return <select className="q-cur" aria-label="貨幣" value={cur} onChange={e=>onChange({currency:e.target.value})} onClick={e=>e.stopPropagation()}>{[...new Set([cur,...currencies])].map(c=><option key={c}>{c}</option>)}</select>}
 /** Shows which trip's budget an atlas price goes into, and lets the user pick another trip or leave it out. */
 function BudgetLine({entry,data,trips,onChange}:{entry:QuestEntry;data?:Data;trips:Trip[];onChange:(p:Partial<QuestEntry>)=>void}){
  if(!data)return null;
@@ -181,7 +184,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
    <h3 className="q-panel-title">能力值評分 <span>STAT SCORES</span></h3><p className="q-muted">{kindMetrics.filter(m=>m.id!=='breakfast').length} 項必評；早餐選填，關閉後不計入綜合分</p>
    <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="改酒店名稱" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
    <button className="q-btn" onClick={()=>{if(window.confirm(`重置「${hotel.name}」嘅評分？`))patch(hotel.id,e=>{const r=e.people?RATERS.reduce((x,p)=>withPersonReset(x,p),e):e;r.scores={};return r})}}>重置分數</button>
-   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div><BudgetLine entry={hotel} data={budgetData} trips={trips} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/>
+   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><CurrencyPick entry={hotel} data={budgetData} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div><BudgetLine entry={hotel} data={budgetData} trips={trips} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/>
    {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?'#e8d6a0':'#3cb85c'} rest={off?'#f6ecd0':'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
    <p className="q-caption">綜合 <b className="q-green-text">{num(t)}</b> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
  
@@ -210,7 +213,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <label>名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：炒粿條"/></label>
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
   <label>分類<select value={d.folder} onChange={e=>set({folder:e.target.value})}><option value="">未分類</option>{folders.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>
-  <label>價錢（全單，可選填）<input maxLength={150} value={d.price} onChange={e=>set({price:e.target.value})} placeholder="例：¥68 或 HK$120"/></label>
+  <label>價錢（全單，可選填）<span className="q-money"><CurrencyPick entry={d} data={budgetData} onChange={set}/><input maxLength={150} value={d.price} onChange={e=>set({price:e.target.value})} placeholder="例：68"/></span></label>
   <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
   <div className="q-field"><span>評分（0 – 10）</span>
@@ -229,8 +232,8 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <div className="q-field"><span>所屬分類</span><div className="q-pick">{[{id:'',name:'未分類'},...folders].map(f=><button type="button" key={f.id||'none'} className={d.folder===f.id?'on':''} onClick={()=>set({folder:f.id})}>{f.name}</button>)}</div></div>
   <label>區域地點<input maxLength={150} value={d.region} onChange={e=>set({region:e.target.value})} placeholder="例：香港・九龍"/></label>
   <div className="q-field"><span>適配季節（可多選）</span><div className="q-pick seasons">{['春','夏','秋','冬'].map(s=><button type="button" key={s} className={(d.seasons.includes(s)?'on ':'')+SEASON_CLASS[s]} onClick={()=>set({seasons:d.seasons.includes(s)?d.seasons.filter(x=>x!==s):['春','夏','秋','冬'].filter(x=>x===s||d.seasons.includes(x))})}>{s}</button>)}</div></div>
-  <label>景區門票（每人）<input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：HK$220 或 免費"/></label>
-  <label>游玩項目門票（每人，可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：HK$150（纜車、園區設施等）"/></label>
+  <label>景區門票（每人）<span className="q-money"><CurrencyPick entry={d} data={budgetData} onChange={set}/><input maxLength={150} value={d.ticket} onChange={e=>set({ticket:e.target.value})} placeholder="例：220 或 免費"/></span></label>
+  <label>游玩項目門票（每人，可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：150（纜車、園區設施等，貨幣同上）"/></label>
   <label>建議游玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
   <BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/>
   <hr className="q-dash"/>

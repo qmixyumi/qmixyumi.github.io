@@ -295,3 +295,10 @@ main.quest-active{padding:24px}.quest-active>.page-heading{display:none}.quest-a
 .quest .q-budget-line input{width:72px}
 .quest .q-budget-line small{flex:1 1 100%;color:var(--muted);font-size:12px;line-height:1.5}
 .quest .q-budget-line.on small{color:#2f7a45}
+/* Currency picker next to atlas prices. */
+.quest .q-money{display:flex;gap:8px;align-items:stretch}
+.quest .q-money input{flex:1 1 auto;min-width:0}
+.quest .q-form .q-money select.q-cur{flex:0 0 auto;width:92px}
+.quest .q-hotel-fields select.q-cur{flex:0 0 auto;width:auto;min-width:0;padding:4px 2px;border:0;background:transparent;font:inherit;font-size:13px;font-weight:700;color:var(--gold);cursor:pointer}
+.quest .q-hotel-fields{grid-template-columns:minmax(0,1fr)}
+.quest .q-hotel-fields label input{flex:1 1 auto;min-width:0}

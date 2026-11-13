@@ -1,0 +1,34 @@
+/* Shared score layout for hotel, food and attraction cards. */
+.quest .q-score-low{--score-ink:#b7382e}
+.quest .q-score-mid{--score-ink:#946400}
+.quest .q-score-high{--score-ink:#207c44}
+.quest .q-score-unset{--score-ink:var(--muted)}
+.app .quest.q-navy .q-score-low{--score-ink:#ff8d82}
+.app .quest.q-navy .q-score-mid{--score-ink:#ffda76}
+.app .quest.q-navy .q-score-high{--score-ink:#83dda0}
+.app .quest .q-stars i.on,.app .quest.q-navy .q-stars i.on{color:var(--score-ink);text-shadow:none}
+.app .quest .q-score-number,.app .quest.q-navy .q-score-number{color:var(--score-ink)}
+.quest .q-score-reading{display:inline-flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0}
+.quest .q-score-reading .q-num{min-width:28px;text-align:right}
+.quest .q-score-metric{margin:12px 0;padding:14px 16px}
+.quest .q-score-metric .q-stat-top{gap:8px;margin-bottom:12px}
+.quest .q-score-metric .q-stat-top>b{flex:1;min-width:0}
+.quest .q-score-metric .q-low{display:block;font-size:11px;margin-top:4px}
+.quest .q-score-total{margin:16px 0;padding:12px 0;border-top:1px solid var(--line)}
+.quest .q-score-total>div{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.quest .q-score-track{display:block;height:14px;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.quest .q-score-track i{display:block;height:100%}
+.quest .q-note{white-space:pre-line}
+.app .quest .q-hotel-fields{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.quest .q-hotel-fields label{min-width:0;gap:6px}
+.quest .q-hotel-fields label>svg{width:18px;flex-shrink:0}
+.quest .q-hotel-fields input{flex:1;width:0;min-width:0}
+.quest .q-hotel-fields select.q-cur{max-width:64px;min-width:0;padding-left:2px;padding-right:2px}
+.quest .q-hotel-fields small{white-space:nowrap;flex-shrink:0}
+@media(max-width:480px){
+ .quest .q-score-metric{padding:12px}
+ .quest .q-score-reading{gap:8px}.quest .q-stars{gap:2px;font-size:14px}
+ .app .quest .q-hotel-fields{gap:8px}.quest .q-hotel-fields label{padding:2px 6px;flex-wrap:wrap}
+ .quest .q-hotel-fields label input{flex-basis:45px}
+ .quest .q-hotel-fields label select.q-cur{max-width:58px}
+}

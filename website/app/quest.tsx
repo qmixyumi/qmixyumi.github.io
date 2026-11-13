@@ -2,10 +2,11 @@
 import Photo from './photos';
 import {useState,useRef,useEffect,CSSProperties,ReactNode} from 'react';
 import {MapPin,Sofa,Leaf,Moon,BadgeDollarSign,Coffee,Star,Eye,Tag,Soup,Flame,Candy,Folder,Pencil,Trash2,Clock,Ticket,LayoutGrid,Trophy,SlidersHorizontal,Plus,Shield,Gem,X,Download,BedDouble,Mountain,UtensilsCrossed,Zap,Orbit,BatteryLow,Users,Camera,Wallet} from 'lucide-react';
-import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor,isRide,metricsFor} from './quest-model';
+import {QuestData,QuestKind,QuestEntry,QuestMetric,emptyQuest,newQuestEntry,questScore,questGrade,questTitles,RATERS,withPersonScore,withPersonReset,tierWords,hotelWords,gradeColors,SPICE,SWEET,metricColor,isRide,metricsFor,scoreBand,scorePalette,foodDescription} from './quest-model';
 import {saveValue,readValue,ago} from './drafts';
 import './quest.css';
 import './quest-navy.css';
+import './quest-scores.css';
 import type {Stop,Trip,Data} from './model';
 import {amount} from './model';
 import {questLink,questCharges,hotelNights,questCurrency} from './budget';
@@ -27,15 +28,21 @@ const spotIcons:Record<string,ReactNode>={view:<Mountain/>,crowd:<Users/>,photo:
 const DRAFT='quest';
 
 /** Read-only row of five stars derived from a 0–10 score. */
-function Stars({value}:{value:number|null|undefined}){const n=toStars(value);return <span className="q-stars" aria-label={typeof value==='number'?`${n} 星`:'未評分'}>{[1,2,3,4,5].map(i=><i key={i} className={i<=n?'on':''}>★</i>)}</span>}
+function Stars({value}:{value:number|null|undefined}){const n=toStars(value);return <span className={"q-stars q-score-"+scoreBand(value)} aria-label={typeof value==='number'?`${n} 星`:'未評分'}>{[1,2,3,4,5].map(i=><i key={i} className={i<=n?'on':''}>★</i>)}</span>}
 /** 0–10 slider that only saves when the finger or mouse is released. */
 function Slider({value,color,label,onChange,rest,disabled,min=0}:{value:number|null|undefined;color:string;label:string;onChange:(v:number)=>void;rest?:string;disabled?:boolean;min?:number}){
  const [local,setLocal]=useState<number|null>(null);const shown=local??(typeof value==='number'?value:null);
  function done(){if(local!==null&&local!==value)onChange(local);setLocal(null)}
  // With min above 0, a tap on an unset bar at its lowest point still records that score.
  function tap(){if(local===null&&typeof value!=='number'&&min>0&&!disabled)onChange(min);done()}
- return <input type="range" disabled={disabled} className={'q-slider'+(shown===null?' q-unset':'')} min={min} max={10} step={1} aria-label={label} value={shown??min} style={{'--c':color,'--p':(Math.max(0,(shown??min)-min)/(10-min)*100)+'%',...(rest?{'--rest':rest}:{})} as CSSProperties} onChange={e=>setLocal(Number(e.target.value))} onPointerUp={tap} onKeyUp={done} onBlur={done} onTouchEnd={done}/>
+ return <input type="range" disabled={disabled} className={'q-slider'+(shown===null?' q-unset':'')} min={min} max={10} step={1} aria-label={label} value={shown??min} style={{'--c':disabled?color:scorePalette(shown).fill,'--rest':disabled?rest:scorePalette(shown).rest,'--p':(Math.max(0,(shown??min)-min)/(10-min)*100)+'%',...(disabled&&rest?{'--rest':rest}:{})} as CSSProperties} onChange={e=>setLocal(Number(e.target.value))} onPointerUp={tap} onKeyUp={done} onBlur={done} onTouchEnd={done}/>
 }
+function ScoreNumber({value}:{value:number|null|undefined}){return <b className={'q-num q-score-number q-score-'+scoreBand(value)}>{num(value)}</b>}
+function ScoreMetric({name,label,icon,value,onChange,disabled=false,extra,reverse=false,min=0}:{name:string;label:string;icon?:ReactNode;value:number|null|undefined;onChange:(v:number)=>void;disabled?:boolean;extra?:ReactNode;reverse?:boolean;min?:number}){
+ const [preview,setPreview]=useState<number|null>(null);const shown=disabled?null:preview??value;
+ return <div className={'q-stat-card q-score-metric'+(disabled?' off':'')}><div className="q-stat-top"><span className="q-micon">{icon||<Star/>}</span><b>{name}{reverse&&<em className="q-low">低分更好</em>}</b>{extra}{!disabled&&<span className="q-score-reading"><Stars value={shown}/><ScoreNumber value={shown}/></span>}</div><div onInput={e=>setPreview(Number((e.target as HTMLInputElement).value))} onBlur={()=>setPreview(null)} onPointerUp={()=>setPreview(null)} onKeyUp={()=>setPreview(null)} onTouchEnd={()=>setPreview(null)}><Slider min={min} disabled={disabled} label={label} color="#a39a84" rest="#e9e2d1" value={value} onChange={onChange}/></div></div>
+}
+function ScoreTotal({value}:{value:number|null}){const colors=scorePalette(value);return <div className="q-score-total"><div><b>綜合評分</b><span className="q-score-reading"><Stars value={value}/><ScoreNumber value={value}/></span></div><span className="q-score-track" style={{background:colors.rest}}><i style={{width:((value??0)*10)+'%',background:colors.fill}}/></span></div>}
 /** Ten clickable cells; tapping the current top cell steps one down so 0 is reachable. */
 function Segments({value,color,label,onChange}:{value:number|null|undefined;color:string;label:string;onChange?:(v:number)=>void}){const v=typeof value==='number'?Math.round(value):0;return <span className="q-segments" role={onChange?'radiogroup':undefined} aria-label={label} style={{'--c':color} as CSSProperties}>{Array.from({length:10},(_,i)=>i+1).map(n=>onChange?<button type="button" key={n} role="radio" aria-checked={v===n} aria-label={`${label} ${n} 分`} className={n<=v?'on':''} onClick={()=>onChange(v===n?n-1:n)}/>:<i key={n} className={n<=v?'on':''}/>)}</span>}
 /** Text box that keeps typing local and saves after a short pause or on leaving the box. */
@@ -126,7 +133,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
  </div>;
 
  // ---------- Ranking ----------
- const ranking=<div className="q-ranking">{!items.length?<p className="q-muted">未有記錄。</p>:<>{ranked.map((e,i)=>{const t=score(e),g=questGrade(t);return <button className="q-rank-row" key={e.id} style={{'--g':gradeColors[g]} as CSSProperties} onClick={()=>{if(kind==='hotel'){setHotelId(e.id);setView('cards')}else openDraft(structuredClone(e))}}><b className="q-rank-no">{i+1}</b><Badge grade={g} small/><strong>{e.name}<small>{[folderName(e.folder),kind==='hotel'?e.room:kind==='spot'?e.region:e.category].filter(Boolean).join(' · ')}</small></strong>{kind==='hotel'&&<Stars value={t}/>}<b className="q-num">{num(t)}</b><small className="q-tier">{(kind==='hotel'?hotelWords:tierWords)[g]}</small></button>})}<button className="q-btn q-green q-export" disabled={exporting} onClick={exportRanking}><Download/> {exporting?'正在匯出…':'匯出排行榜 PNG'}</button></>}</div>;
+ const ranking=<div className="q-ranking">{!items.length?<p className="q-muted">未有記錄。</p>:<>{ranked.map((e,i)=>{const t=score(e),g=questGrade(t);return <button className="q-rank-row" key={e.id} style={{'--g':gradeColors[g]} as CSSProperties} onClick={()=>{if(kind==='hotel'){setHotelId(e.id);setView('cards')}else openDraft(structuredClone(e))}}><b className="q-rank-no">{i+1}</b><Badge grade={g} small/><strong>{e.name}<small>{[folderName(e.folder),kind==='hotel'?e.room:kind==='spot'?e.region:e.category].filter(Boolean).join(' · ')}</small></strong>{kind==='hotel'&&<Stars value={t}/>}<ScoreNumber value={t}/><small className="q-tier">{(kind==='hotel'?hotelWords:tierWords)[g]}</small></button>})}<button className="q-btn q-green q-export" disabled={exporting} onClick={exportRanking}><Download/> {exporting?'正在匯出…':'匯出排行榜 PNG'}</button></>}</div>;
 
  // ---------- Folder chips (food) ----------
  const folderChips=<div className="q-folders">
@@ -140,12 +147,12 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
  function foodCard(e:QuestEntry){const t=score(e),g=questGrade(t),level=e.level||'spice',lv=level==='sweet'?e.sweet||'':e.spice;return <article className="q-food-card" id={'quest-'+e.id} key={e.id} style={{'--g':gradeColors[g]} as CSSProperties}>
   <header><div><h3>{e.name}</h3>{e.category&&<span className="q-tag">{e.category}</span>}{(e.region||e.price)&&<p className="q-muted">{[e.region,e.price].filter(Boolean).join(' · ')}</p>}</div><Badge grade={g} word={tierWords[g]}/></header>
   {e.photo&&<Photo className="q-thumb" src={e.photo} alt={e.name+' 照片'}/>}
-  {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/><b className="q-num">{num(mine(e)[m.id],0)}</b></div>)}
+  {kindMetrics.map(m=><ScoreMetric key={m.id} name={m.name} label={`${e.name} ${m.name}`} icon={foodIcons[m.id]} value={mine(e)[m.id]} reverse={m.reverse} onChange={v=>setScore(e,m.id,v)}/>)}
   {lv&&<div className="q-level-row"><span className="q-micon">{level==='sweet'?<Candy/>:<Flame/>}</span><span className="q-mname">{level==='sweet'?'甜度':'辣度'}</span><span className="q-mini-tag">級別</span><span className="q-level-chips">{(level==='sweet'?SWEET:SPICE).map(s=><button key={s} className={lv===s?'on':''} onClick={()=>patch(e.id,x=>{if(level==='sweet')x.sweet=lv===s?'':s;else x.spice=lv===s?'':s})}>{s}</button>)}</span></div>}
-  <div className="q-total-row"><b>綜合</b><span className="q-gold-bar"><i style={{width:((t??0)*10)+'%'}}/></span><b className="q-num">{num(t===null?null:Math.round(t),0)}</b></div>
+  <ScoreTotal value={t}/>
   {lv&&<p className="q-caption">綜合評分不含：{level==='sweet'?'甜度':'辣度'}</p>}
 
-  {(e.notes||e.review)&&<p className="q-note">{[e.notes,e.review].filter(Boolean).join('\n')}</p>}
+  {foodDescription(e.notes,e.review)&&<p className="q-note">{foodDescription(e.notes,e.review)}</p>}
   <footer><button className="q-btn q-blue" onClick={()=>openDraft(structuredClone(e))}><Pencil/> 編輯</button><button className="q-btn q-red" onClick={()=>erase(e)}><Trash2/> 刪除</button></footer>
  </article>}
  const foodView=<>{folderChips}<div className="q-sort"><button className={sort==='new'?'on':''} onClick={()=>setSort('new')}>最新</button><button className={sort==='score'?'on':''} onClick={()=>setSort('score')}>最高分</button></div>
@@ -160,7 +167,8 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   {e.ride&&<p className="q-line"><Ticket/><span className="q-mini-label">項目</span>{e.ride}</p>}
   {e.duration&&<p className="q-line"><Clock/><span className="q-mini-label">時長</span>{e.duration}</p>}
   {e.photo&&<Photo className="q-thumb" src={e.photo} alt={e.name+' 照片'}/>}
-  <div className="q-seg-list">{ms.map(m=><div className="q-seg-metric" key={m.id}><div><span>{m.name}{m.reverse&&<em className="q-low">低分更好</em>}</span><b className="q-num">{num(mine(e)[m.id],0)}/10</b></div><Segments label={`${e.name} ${m.name}`} color={metricColor(m)} value={mine(e)[m.id]} onChange={v=>setScore(e,m.id,v)}/></div>)}</div>
+  <div className="q-score-list">{ms.map(m=><ScoreMetric key={m.id} name={m.name} label={`${e.name} ${m.name}`} icon={spotIcons[m.id]} value={mine(e)[m.id]} reverse={m.reverse} onChange={v=>setScore(e,m.id,v)}/>)}</div><ScoreTotal value={t}/>
+
 
   {(e.notes||e.review)&&<details className="q-more"><summary>備註</summary><p>{[e.review,e.notes].filter(Boolean).join('\n')}</p></details>}
  </article>}
@@ -193,16 +201,18 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
    <h3 className="q-panel-title">能力值評分 <span>STAT SCORES</span></h3><p className="q-muted">{kindMetrics.filter(m=>m.id!=='breakfast').length} 項必評；早餐選填，關閉後不計入綜合分</p>
    <div className="q-hotel-name"><h3>{hotel.name}</h3><button className="q-rename" aria-label="編輯酒店名稱同記入旅費" title="改名、記入旅費" onClick={()=>openDraft(structuredClone(hotel))}><Pencil/></button><Stars value={t}/><span className="q-letter" style={{'--g':gradeColors[g]} as CSSProperties}>{g==='—'?'?':g}</span></div>
    <button className="q-btn" onClick={()=>{if(window.confirm(`重置「${hotel.name}」嘅評分？`))patch(hotel.id,e=>{const r=e.people?RATERS.reduce((x,p)=>withPersonReset(x,p),e):e;r.scores={};return r})}}>重置分數</button>
-   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><CurrencyPick entry={hotel} data={budgetData} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div>
-   {kindMetrics.map(m=>{const off=m.id==='breakfast'&&!hotel.breakfast;const v=mine(hotel)[m.id];return <div key={m.id} className={'q-stat-card'+(off?' off':'')}><div className="q-stat-top"><span className="q-micon">{hotelIcons[m.id]||<Star/>}</span><b>{m.name}</b>{m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small>{hotel.breakfast&&<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</>:<><Stars value={v}/><b className="q-num">{num(v,0)}</b></>}</div><Slider disabled={off} label={`${m.name}`} color={off?(navy?'#4a5680':'#e8d6a0'):'#3cb85c'} rest={off?(navy?'#26335f':'#f6ecd0'):'#93dba1'} value={v} onChange={nv=>setScore(hotel,m.id,nv)}/></div>})}
-   <p className="q-caption">綜合 <b className="q-green-text">{num(t)}</b> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
+   <div className="q-hotel-fields"><label><BedDouble/><LazyText aria-label="房型" placeholder="房型" maxLength={150} value={hotel.room} onSave={v=>patch(hotel.id,e=>{e.room=v})}/></label><label><BadgeDollarSign/><CurrencyPick entry={hotel} data={budgetData} onChange={p=>patch(hotel.id,e=>({...e,...p}))}/><LazyText className="q-num-input" aria-label="每晚價格" placeholder="每晚價格" maxLength={150} value={hotel.price} onSave={v=>patch(hotel.id,e=>{e.price=v})}/><small>／晚</small></label></div>
+   {kindMetrics.map(m=><ScoreMetric key={m.id} name={m.name} label={m.name} icon={hotelIcons[m.id]} value={mine(hotel)[m.id]} disabled={m.id==='breakfast'&&!hotel.breakfast} onChange={v=>setScore(hotel,m.id,v)} extra={m.id==='breakfast'?<><button className={'q-use'+(hotel.breakfast?' on':'')} onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}><i/>{hotel.breakfast?'使用中':'未使用'}</button><small>{hotel.breakfast?'計分':'不計分'}</small></>:undefined}/>)}
+   <ScoreTotal value={t}/>
+
+   <p className="q-caption">綜合 <ScoreNumber value={t}/> 分 · {hotelWords[g]} · 已計 {counted} 項 · 早餐{hotel.breakfast?'計入':'未計'}</p>
  
   </section>
   <section className="q-panel q-hotel-side">
    <div className="q-panel-head"><h3 className="q-panel-title">酒店早餐 <span>BREAKFAST</span></h3><button className="q-dash-tag" onClick={()=>patch(hotel.id,e=>{e.breakfast=!e.breakfast})}>{hotel.breakfast?'使用中 · 計分':'未使用 · 不計分'}</button></div>
    <p className="q-muted">早餐選項，未使用可關閉評分；可上傳專屬照片</p>
    <div className="q-breakfast">{hotel.photo?<Photo className="q-breakfast-img" src={hotel.photo} alt={hotel.name+' 早餐照片'}/>:<button className="q-photo-empty" onClick={()=>hotelPhoto.current?.click()}><Coffee/>上傳早餐照片</button>}
-    <div className="q-photo-bar"><span className="q-photo-label">{hotel.name}<span className="q-grade-chip"><b>{g==='—'?'?':g}</b>級</span><b className="q-num">{num(t)}</b><small>分</small></span>{hotel.photo&&<button className="q-btn" disabled={photoBusy} onClick={()=>hotelPhoto.current?.click()}>{photoBusy?'處理中…':'更換照片'}</button>}</div>
+    <div className="q-photo-bar"><span className="q-photo-label">{hotel.name}<span className="q-grade-chip"><b>{g==='—'?'?':g}</b>級</span><ScoreNumber value={t}/><small>分</small></span>{hotel.photo&&<button className="q-btn" disabled={photoBusy} onClick={()=>hotelPhoto.current?.click()}>{photoBusy?'處理中…':'更換照片'}</button>}</div>
     <input ref={hotelPhoto} hidden type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(f)void hotelPhotoChange(f,hotel.id);e.target.value=''}}/></div>
    <div className="q-review"><h4 className="q-sub-title">住後感 <span>STAY REVIEW</span></h4><LazyText multiline aria-label="住後感" maxLength={3000} placeholder="— 住後感，每行一點" value={hotel.review} onSave={v=>patch(hotel.id,e=>{e.review=v})}/><p className="q-caption"><span>{hotel.breakfast?'早餐計分中':'早餐未使用'} · 住後感可補位記錄整體評價</span><span>{hotel.review.length} 字</span></p></div>
    <h4 className="q-panel-title small">屬性 / 技能備註 <span>SKILL NOTES</span></h4><LazyText multiline aria-label="屬性／技能備註" maxLength={3000} placeholder="— 設施、交通、附近好去處" value={hotel.notes} onSave={v=>patch(hotel.id,e=>{e.notes=v})}/><p className="q-caption"><span>備註會自動存檔</span><span>{hotel.notes.length} 字</span></p>
@@ -226,7 +236,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <BudgetMore entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-field"><span>圖片（可選）</span><div className="q-row"><label className="q-btn q-file">上傳圖片<input type="file" hidden accept="image/png,image/jpeg,image/webp" disabled={photoBusy} onChange={e=>{const f=e.target.files?.[0];if(f)void photo(f);e.target.value=''}}/></label><button type="button" className="q-btn" disabled={!d.photo} onClick={()=>set({photo:''})}>移除圖片</button>{photoBusy&&<small>處理中…</small>}</div>{d.photo&&<Photo className="q-thumb" src={d.photo} alt="圖片預覽"/>}</div>
   <div className="q-field"><span>評分（0 – 10）</span>
-   {kindMetrics.map(m=><div className="q-metric-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{foodIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}</span><Slider label={m.name} color={metricColor(m)} value={mine(d)[m.id]} onChange={v=>setDraftScore(m.id,v)}/><b className="q-num">{num(mine(d)[m.id],0)}</b></div>)}
+   {kindMetrics.map(m=><ScoreMetric key={m.id} name={m.name} label={m.name} icon={foodIcons[m.id]} value={mine(d)[m.id]} reverse={m.reverse} onChange={v=>setDraftScore(m.id,v)}/>)}
    <div className="q-level-row"><span className="q-micon q-purple"><Star/></span><span className="q-mname">級別</span><span className="q-mini-tag">級別</span><span className="q-seg-toggle"><button type="button" className={level==='spice'?'on':''} onClick={()=>set({level:'spice'})}>辣度</button><button type="button" className={level==='sweet'?'on':''} onClick={()=>set({level:'sweet'})}>甜度</button></span></div>
    <div className="q-level-row"><span className="q-micon q-pink">{level==='sweet'?<Candy/>:<Flame/>}</span><span className="q-mname">{level==='sweet'?'甜度':'辣度'}</span><span className="q-mini-tag">級別</span><span className="q-level-chips">{(level==='sweet'?SWEET:SPICE).map(s=>{const cur=level==='sweet'?d.sweet||'':d.spice;return <button type="button" key={s} className={cur===s?'on':''} onClick={()=>set(level==='sweet'?{sweet:cur===s?'':s}:{spice:cur===s?'':s})}>{s}</button>})}</span></div>
   </div>
@@ -246,7 +256,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <label>項目／設施收費（可選填）<input maxLength={150} value={d.ride} onChange={e=>set({ride:e.target.value})} placeholder="例：150（纜車、單項設施等，貨幣同上）"/></label>
   <label>建議遊玩時間（可選填）<input maxLength={150} value={d.duration} onChange={e=>set({duration:e.target.value})} placeholder="例：約 2-3 小時"/></label>
   <hr className="q-dash"/>
-  <div className="q-slider-list">{ms.map(m=>{const v=mine(d)[m.id];return <div className="q-slide-row" key={m.id} style={{'--c':metricColor(m)} as CSSProperties}><span className="q-micon">{spotIcons[m.id]||<Star/>}</span><span className="q-mname">{m.name}{m.reverse&&<em className="q-down" title="低分更好">↓</em>}</span><Slider min={1} label={m.name+(m.reverse?'（低分更好）':'')} color={metricColor(m)} value={v} onChange={nv=>setDraftScore(m.id,nv)}/><b className="q-num">{typeof v==='number'?num(v,0):'–'}/10</b></div>})}</div>
+  <div className="q-slider-list">{ms.map(m=><ScoreMetric key={m.id} min={1} name={m.name} label={m.name+(m.reverse?'（低分更好）':'')} icon={spotIcons[m.id]} value={mine(d)[m.id]} reverse={m.reverse} onChange={v=>setDraftScore(m.id,v)}/>)}</div>
   <label>備註（可選填）<textarea maxLength={3000} value={d.notes} onChange={e=>set({notes:e.target.value})} placeholder="交通、注意事項、拍攝位……"/></label>
   {d.review&&<label>感想<textarea maxLength={3000} value={d.review} onChange={e=>set({review:e.target.value})}/></label>}
   <BudgetMore entry={d} data={budgetData} trips={trips} onChange={set}/>

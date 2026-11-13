@@ -25,7 +25,7 @@ export function rowsToExtras(picked:ImportRow[],start:string,addQuest:boolean,te
   tickets.push(ticket);if(ticket.fare===null)unpriced.push(ticket)}
  const total=transportTotal(text);
  if(total&&unpriced.length&&unpriced.length===tickets.length&&tickets.every(t=>t.type!=='flight')){const share=Math.round(total.total/unpriced.length*100)/100;for(const t of unpriced){t.fare=share;t.currency=total.currency;t.note=(`票價由文件「${total.label}」平均分做 ${unpriced.length} 程，請按訂單核對；`+t.note).slice(0,500)}}
- const entries:QuestEntry[]=[];if(addQuest)for(const r of picked){const k=questKind[r.kind];if(!k)continue;const name=cleanName(r.title.trim()).slice(0,100);if(!name||(k==='hotel'&&(!hotelName.test(name)||/^(?:返回|回到?|返)/.test(name))))continue;if(entries.some(e=>e.kind===k&&e.name===name))continue;entries.push({...newQuestEntry(k),name,region:r.place===name?'':r.place.slice(0,150),notes:'由行程文件匯入'})}
+ const entries:QuestEntry[]=[];if(addQuest)for(const r of picked){const k=questKind[r.kind];if(!k)continue;const name=cleanName(r.title.trim()).slice(0,100);if(!name||(k==='hotel'&&(!hotelName.test(name)||/^(?:返回|回到?|返)/.test(name))))continue;if(entries.some(e=>e.kind===k&&e.name===name))continue;entries.push({...newQuestEntry(k),name,region:r.place===name?'':r.place.slice(0,150),notes:''})}
  return {tickets,entries}}
 import {extractFile} from './file-reader';
 const SITE_UPDATED='網站啱啱更新咗';

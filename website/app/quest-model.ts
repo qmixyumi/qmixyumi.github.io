@@ -34,3 +34,9 @@ export function withPersonScore(e:QuestEntry,person:string,id:string,v:number|nu
 export function withPersonReset(e:QuestEntry,person:string):QuestEntry{const next=structuredClone(e);if(!next.people)next.people=Object.fromEntries(RATERS.map(p=>[p,{...e.scores}]));next.people[person]={};next.scores={};averageInto(next);return next}
 export function personTotal(e:QuestEntry,metrics:QuestMetric[],person:string){return questScore({...e,scores:personScores(e,person)},metrics)}
 export function biggestGap(e:QuestEntry,metrics:QuestMetric[]){if(!e.people)return null;let best:{name:string;a:number;b:number}|null=null;for(const m of metrics){if(e.kind==='hotel'&&m.id==='breakfast'&&!e.breakfast)continue;const a=e.people[RATERS[0]]?.[m.id],b=e.people[RATERS[1]]?.[m.id];if(typeof a!=='number'||typeof b!=='number')continue;if(Math.abs(a-b)>=2&&(!best||Math.abs(a-b)>Math.abs(best.a-best.b)))best={name:m.name,a,b}}return best}
+
+/** Display bands use the entered score; reverse metrics retain their existing calculation. */
+export function scoreBand(v:number|null|undefined){return typeof v!=='number'||!Number.isFinite(v)?'unset':v<5?'low':v<8?'mid':'high'}
+export const scorePalette=(v:number|null|undefined)=>({low:{fill:'#c7463a',rest:'#ef9189'},mid:{fill:'#c79420',rest:'#ffe083'},high:{fill:'#36b96a',rest:'#92dda3'},unset:{fill:'#a39a84',rest:'#e9e2d1'}}[scoreBand(v)]);
+/** Hide generated provenance lines without changing stored notes or real descriptions. */
+export function foodDescription(notes:string,review:string){return [notes,review].flatMap(t=>t.split(/\r?\n/)).map(t=>t.trim()).filter(t=>t&&!/^由行程文件(?:中)?匯入[。.]?$/.test(t)&&!/^來自旅程[：:]/.test(t)).join('\n')}

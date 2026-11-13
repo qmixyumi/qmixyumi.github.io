@@ -27,3 +27,14 @@ console.log('PASS: incomplete and zero ratings, spice exclusion, breakfast opt-i
 assert.equal(RIDE_METRICS.length,5);assert.equal(questScore(r,q2.metrics.spot),(8+8+6+6+10)/5);
 const s2={...r,spotType:'spot'};assert.equal(questScore(s2,q2.metrics.spot),null);
 console.log('PASS: spot vs ride metrics.')}
+
+const {scoreBand,scorePalette,foodDescription}=await import(modelUrl);
+assert.deepEqual([undefined,null,0,1,4,4.9,5,7,7.9,8,10].map(scoreBand),['unset','unset','low','low','low','low','mid','mid','mid','high','high']);
+assert.equal(scoreBand(NaN),'unset');
+assert.notEqual(scorePalette(4).fill,scorePalette(5).fill);
+assert.notEqual(scorePalette(7).fill,scorePalette(8).fill);
+assert.equal(foodDescription('由行程文件匯入',''),'');
+assert.equal(foodDescription('由行程文件中匯入\n來自旅程：長沙','  '),'');
+assert.equal(foodDescription('由行程文件匯入\n肉質偏硬，但湯濃郁甘甜','值得一試'),'肉質偏硬，但湯濃郁甘甜\n值得一試');
+assert.equal(foodDescription('由行程文件匯入後補充：湯好飲',''),'由行程文件匯入後補充：湯好飲');
+console.log('PASS: score colour boundaries, unrated/zero distinction and food description provenance filtering.');

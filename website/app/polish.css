@@ -90,3 +90,6 @@
 .app .cancelled-stops .cancelled-stop>span{flex:1;min-width:0;display:grid;opacity:.7}
 .app .cancelled-stops .cancelled-stop b{text-decoration:line-through;font-weight:600}
 .app .cancelled-stops .cancelled-stop small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Diary card: 修改 and 刪除 sit together. */
+.app .journal .journal-tools{display:flex;gap:14px;justify-content:flex-end}

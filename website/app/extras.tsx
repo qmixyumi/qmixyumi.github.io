@@ -37,6 +37,6 @@ function download(name:string,text:string,type:string){const a=document.createEl
 export function DayExport({trip,day,stops}:{trip:Trip;day:number;stops:Stop[]}){
  const [msg,setMsg]=useState('');
  const text=dayText(trip,day,stops);
- async function share(){try{if(navigator.share){await navigator.share({title:trip.name,text});return}await navigator.clipboard.writeText(text);setMsg('已複製當日行程文字')}catch{/* user cancelled */}}
+ async function share(){try{if(navigator.share){await navigator.share({title:trip.name,text});return}await navigator.clipboard.writeText(text);setMsg('已複製當日行程文字')}catch(e){if(!(e instanceof DOMException&&e.name==='AbortError'))setMsg('未能分享或複製，請改用「分享行程」')}}
  return <span className="day-export"><button className="secondary" onClick={share} title="分享或複製當日行程"><Share2 size={15}/> 分享當日</button><button className="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(text);setMsg('已複製當日行程文字')}catch{setMsg('未能複製，請手動選取')}}} title="複製當日行程文字"><Copy size={15}/></button><button className="secondary" onClick={()=>{download(trip.name.replace(/[\\/:*?"<>|]/g,'_')+'.ics',tripCalendar(trip),'text/calendar');setMsg('已下載 .ics，可匯入 Google／Apple 日曆')}} title="匯出全程到日曆"><CalendarPlus size={15}/> 日曆</button>{msg&&<small role="status">{msg}</small>}</span>;
 }

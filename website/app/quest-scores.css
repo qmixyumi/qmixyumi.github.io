@@ -32,3 +32,7 @@
  .quest .q-hotel-fields label input{flex-basis:45px}
  .quest .q-hotel-fields label select.q-cur{max-width:58px}
 }
+
+/* The nightly price box must always leave room to type: when two boxes do not fit side by side they stack. */
+.app .quest .q-hotel-fields{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.app .quest .q-hotel-fields label input{min-width:64px}

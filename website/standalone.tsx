@@ -9,4 +9,4 @@ if(shared)document.body.classList.add('shared-body');
 createRoot(document.getElementById('root')!).render(shared?<SharedView/>:<Adventure/>);
 window.addEventListener('hashchange',()=>{if(isShareHash(location.hash)!==shared)location.reload()});
 
-if(import.meta.env.PROD&&"serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js").then(reg=>{const announce=()=>{if(reg.waiting)window.dispatchEvent(new CustomEvent('adventure-update',{detail:reg.waiting}))};announce();reg.addEventListener('updatefound',()=>{reg.installing?.addEventListener('statechange',announce)});}).catch(()=>{});});}
+if(import.meta.env.PROD&&"serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("/sw.js").then(reg=>{const announce=()=>{if(reg.waiting&&navigator.serviceWorker.controller)window.dispatchEvent(new CustomEvent('adventure-update',{detail:reg.waiting}))};announce();reg.addEventListener('updatefound',()=>{reg.installing?.addEventListener('statechange',announce)});}).catch(()=>{});});}

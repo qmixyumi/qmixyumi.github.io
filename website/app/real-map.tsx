@@ -25,22 +25,25 @@ export async function geocodeOptions(query:string):Promise<{lat:number;lng:numbe
  return x.map(h=>({lat:Number(h.lat),lng:Number(h.lon),label:h.display_name})).filter(h=>Number.isFinite(h.lat)&&Number.isFinite(h.lng));
 }
 export default function RealMap({stops,selected,onSelect,onReview}:{stops:Stop[];selected?:string;onSelect:(id:string)=>void;onReview:()=>void}){
- const box=useRef<HTMLDivElement>(null),map=useRef<L.Map|null>(null),layer=useRef<L.LayerGroup|null>(null);
+ const box=useRef<HTMLDivElement>(null),map=useRef<L.Map|null>(null),layer=useRef<L.LayerGroup|null>(null),fitted=useRef(''),bounds=useRef<L.LatLngBounds|null>(null),pick=useRef(onSelect);pick.current=onSelect;
  const placed=stops.filter(s=>typeof s.lat==='number'&&typeof s.lng==='number');
  const missing=stops.filter(s=>!(typeof s.lat==='number'&&typeof s.lng==='number'));
+ const drawn=JSON.stringify([selected,stops.map(s=>[s.id,s.lat,s.lng,s.kind,s.status,s.time,s.title])]);
  useEffect(()=>{if(!box.current||map.current)return;
   map.current=L.map(box.current,{scrollWheelZoom:false}).setView([22.3,114.17],3);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map.current);
   layer.current=L.layerGroup().addTo(map.current);
-  return()=>{map.current?.remove();map.current=null}},[]);
+  // The map can start hidden (phone list view); once it gets a size, measure again and frame the day's places.
+  let wide=box.current.clientWidth;const seen=new ResizeObserver(()=>{const m=map.current,w=box.current?.clientWidth||0;if(!m||!w||w===wide)return;const first=!wide;wide=w;m.invalidateSize();if(first&&bounds.current)m.fitBounds(bounds.current,{maxZoom:15})});seen.observe(box.current);
+  return()=>{seen.disconnect();map.current?.remove();map.current=null}},[]);
  useEffect(()=>{const m=map.current,g=layer.current;if(!m||!g)return;g.clearLayers();
   const points=placed.map(s=>[s.lat!,s.lng!] as [number,number]);
   placed.forEach((s,i)=>{const icon=L.divIcon({className:'real-pin'+(s.id===selected?' selected':'')+(s.status==='已到訪'?' done':''),html:`<span>${kinds[s.kind]||'📍'}</span><i>${stops.indexOf(s)+1}</i>`,iconSize:[38,38],iconAnchor:[19,19]});
-   L.marker(points[i],{icon,title:`${s.time} ${s.title}`}).on('click',()=>onSelect(s.id)).bindTooltip(`${s.time} ${s.title}`).addTo(g)});
+   L.marker(points[i],{icon,title:`${s.time} ${s.title}`}).on('click',()=>pick.current(s.id)).bindTooltip(`${s.time} ${s.title}`).addTo(g)});
   if(points.length>1)L.polyline(points,{color:'#a37b43',weight:3,dashArray:'6 6'}).addTo(g);
-  if(points.length)m.fitBounds(L.latLngBounds(points).pad(.25),{maxZoom:15});
-  setTimeout(()=>m.invalidateSize(),50);
- },[stops,selected]);
+  const where=JSON.stringify(points);bounds.current=points.length?L.latLngBounds(points).pad(.25):null;
+  if(where!==fitted.current){fitted.current=where;if(bounds.current&&box.current?.clientWidth)m.fitBounds(bounds.current,{maxZoom:15})}
+ },[drawn]);
  return <div className="real-map">
   <div ref={box} className="real-map-canvas" role="region" aria-label="真實地圖"/>
   <div className="real-map-bar"><span>{placed.length} / {stops.length} 個地點已定位</span>

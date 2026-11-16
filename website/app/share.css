@@ -25,3 +25,10 @@
 .app .share-panel h3{font-size:15px;margin:0}
 .app .share-panel p{font-size:13px;line-height:1.6;margin:8px 0}
 .app .share-panel .share-url{width:100%;font-size:12px;margin-top:8px}
+.share-panel .share-notes-opt{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-weight:600;cursor:pointer}
+.share-panel .share-notes-opt input{width:18px;height:18px;flex:none}
+.share-panel .share-summary{background:#f6f3e6;border-radius:10px;padding:10px 12px;margin:0 0 8px;font-size:13px;line-height:1.6}
+.share-panel .share-summary ul{margin:4px 0 0;padding-left:4px;list-style:none}
+.share-panel .share-summary details{margin-top:6px}
+.share-panel .share-summary details p{margin:6px 0 0;display:flex;flex-direction:column}
+.share-panel .share-summary small{display:block;margin-top:6px;color:#8a4b00}

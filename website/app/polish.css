@@ -93,3 +93,4 @@
 
 /* Diary card: 修改 and 刪除 sit together. */
 .app .journal .journal-tools{display:flex;gap:14px;justify-content:flex-end}
+.app .note-photo-busy{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:#fff6dc;color:#7a5200;font-size:.9rem}

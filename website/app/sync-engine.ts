@@ -8,8 +8,8 @@ export class SyncEngine{
  constructor(private io:SyncIO,base?:Base){this.base=base}
  stop(){this.stopped=true}
  private tell(phase:SyncState['phase'],message:string,conflicts:Conflict[]=[]){if(!this.stopped)this.io.notify({phase,message,conflicts,...(phase==='synced'?{last:new Date().toISOString()}: {})})}
- private async conflict(base:Data,local:Data,remote:Base,conflicts:Conflict[]){await this.io.checkpoint(local,'修改衝突前本機備份');if(this.stopped)return;this.pending={base,local,remote};this.tell('conflict','有同一欄位被兩邊修改，請選擇保留版本。其他修改仍留喺本機。',conflicts)}
- async run(){if(this.busy||this.stopped||this.pending)return;this.busy=true;this.tell('busy','正在核對雲端修改…');try{
+ private async conflict(base:Data,local:Data,remote:Base,conflicts:Conflict[]){await this.io.checkpoint(local,'修改衝突前本機備份');if(this.stopped)return;this.pending={base,local,remote};this.tell('conflict','兩部裝置改咗同一項，撳呢度揀保留邊個版本。修改暫時留喺本機。',conflicts)}
+ async run(retries=2):Promise<void>{if(this.busy||this.stopped||this.pending)return;this.busy=true;let again=false;this.tell('busy','正在核對雲端修改…');try{
   const remote=await this.io.read();if(this.stopped)return;if(!this.io.valid(remote.data))throw Error('雲端格式不相容，已停止同步並保留本機資料。');
   const local=structuredClone(this.io.get()),base=this.base?.data||emptyData();const merged=mergeData(base,local,remote.data);
   if(merged.conflicts.length){await this.conflict(base,local,remote,merged.conflicts);return}
@@ -26,6 +26,11 @@ export class SyncEngine{
   // A failed baseline write is safe: subsequent merges conservatively retain/conflict.
   this.io.apply(rebased.data);await this.io.persist(saved);if(this.stopped)return;this.base=saved;
   this.tell(same(rebased.data,saved.data)?'synced':'idle',same(rebased.data,saved.data)?'已同步至雲端':'新修改已保留，等待下一次同步');
- }catch(e){this.tell('error',e instanceof Error?e.message:'同步失敗，修改仍保留喺本機，稍後自動重試。')}finally{this.busy=false}}
+ }catch(e){
+  // Another device saved first: re-read and merge again straight away instead of showing an error.
+  if(e instanceof Error&&e.name==='StaleVersion'&&retries>0)again=true;
+  else this.tell('error',e instanceof Error?e.message:'同步失敗，修改仍保留喺本機，稍後自動重試。')
+ }finally{this.busy=false}
+ if(again&&!this.stopped)return this.run(retries-1)}
  async resolve(choices:Choices){if(!this.pending||this.busy||this.stopped)return;this.busy=true;try{const p=this.pending;if(!same(p.local,this.io.get())){this.pending=undefined;this.tell('idle','本機內容已改動，會重新核對衝突。');return}const merged=mergeData(p.base,p.local,p.remote.data,choices);if(merged.conflicts.length)throw Error('請為每項衝突選擇保留版本。');if(!this.io.valid(merged.data))throw Error('所選組合不完整，請重新選擇。');await this.io.checkpoint(p.local,'確認衝突選擇前備份');if(this.stopped)return;if(!same(p.local,this.io.get())){this.pending=undefined;this.tell('idle','本機內容已改動，會重新核對。');return}this.io.apply(merged.data);await this.io.persist(p.remote);if(this.stopped)return;this.base=p.remote;this.pending=undefined;this.tell('idle','已保留選擇，正在重新核對最新雲端版本。')}catch(e){this.tell('conflict',e instanceof Error?e.message:'未能保留選擇',this.pending?mergeData(this.pending.base,this.pending.local,this.pending.remote.data).conflicts:[])}finally{this.busy=false}}
 }

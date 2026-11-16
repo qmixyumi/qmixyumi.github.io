@@ -9,15 +9,14 @@ export async function syncAttachments(data:Data,client:SupabaseClient,readLocal:
  const bucket=client.storage.from(ATTACHMENT_BUCKET);
  const items=[...snapshot.trips.flatMap(t=>t.attachments||[]),...(snapshot.photos||[])];
  const verified=new Set<string>();
- async function exists(path:string){
+ let listed=false;
+ // One paged listing per sync instead of one request per photo/attachment.
+ async function listAll(){for(let offset=0;;offset+=1000){const {data:rows,error}=await bucket.list('attachments',{limit:1000,offset});if(error)throw storageProblem(error);for(const row of rows||[])verified.add('attachments/'+row.name);if(!rows||rows.length<1000)break}listed=true}
+ async function exists(path:string,fresh=false){
   if(!/^attachments\/[a-f0-9]{64}$/.test(path))throw Error('附件雲端路徑格式無效');
   if(verified.has(path))return true;
-  const name=path.slice('attachments/'.length);
-  const {data:rows,error}=await bucket.list('attachments',{search:name,limit:100});
-  if(error)throw storageProblem(error);
-  const found=rows?.some(row=>row.name===name)??false;
-  if(found)verified.add(path);
-  return found;
+  if(!listed||fresh)await listAll();
+  return verified.has(path);
  }
  for(let i=0;i<items.length;i++){
   const item=items[i];progress(`附件 ${i+1}/${items.length}：檢查 ${item.name}…`);
@@ -32,7 +31,7 @@ export async function syncAttachments(data:Data,client:SupabaseClient,readLocal:
    progress(`附件 ${i+1}/${items.length}：上傳 ${item.name}…`);
    const {error}=await bucket.upload(path,blob,{upsert:false,contentType:'application/octet-stream'});
    // Another member may have uploaded the same immutable bytes while we were checking.
-   if(error&&!await exists(path))throw storageProblem(error);
+   if(error&&!await exists(path,true))throw storageProblem(error);
    verified.add(path);
   }
   item.cloudPath=path;

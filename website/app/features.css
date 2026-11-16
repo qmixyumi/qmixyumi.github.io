@@ -86,3 +86,9 @@ dialog:has(.modal-actions){padding-bottom:0!important}
  .split-people{gap:12px}
 }
 @media print{.alert-panel,.shot-form,.account-chip,.search-btn{display:none!important}}
+body .app .pwa-strip .status-line.needs-action,body.game .app .pwa-strip .status-line.needs-action{color:#a3471d;font-weight:700}
+body .app .pwa-strip .status-line.needs-action i{background:#d9622b;box-shadow:0 0 0 3px rgba(217,98,43,.2)}
+.app .sync-confirm fieldset{display:grid;grid-template-columns:1fr;gap:6px;min-width:0}
+.app .sync-confirm fieldset .check-row{display:flex;align-items:center;gap:8px;white-space:normal;font-weight:700}
+.app .sync-confirm fieldset .sync-value{margin:0 0 6px;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere}
+.app .sync-confirm legend{font-size:14px;font-weight:700}

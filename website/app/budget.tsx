@@ -86,8 +86,24 @@ export function questLink(e: QuestEntry, d: Data): QuestLink {
   return { stops: [], how: hits.length > 1 ? "many" : "unmatched" };
 }
 
-/** Reads a typed price such as "792.75", "HK$220", "¥120", "80元" or "CNY 80". "免費" or no number gives nothing. */
+// A price may carry a "per" word that people type naturally: "JPY 22,000／晚", "每晚 ¥800", "HK$120/人", "$50 per person".
+const NIGHT = "晚|夜|nights?";
+const HEAD = "人|位|張|persons?|pax|pp|head";
+const UNIT_TAIL = new RegExp("\\s*(?:(?:[／/]|每|一|per|a|an)\\s*)(" + NIGHT + "|" + HEAD + ")\\s*$", "i");
+const UNIT_HEAD = new RegExp("^\\s*(?:每|一|per)\\s*(" + NIGHT + "|" + HEAD + ")\\s*[:：]?\\s*", "i");
+/** Splits a "per night" or "per person" word off a typed price. */
+export function priceUnit(text: string): { text: string; unit?: "night" | "person" } {
+  const t = (text || "").trim();
+  const m = t.match(UNIT_TAIL) || t.match(UNIT_HEAD);
+  if (!m) return { text: t };
+  const rest = t.replace(m[0], "").trim();
+  if (!rest) return { text: t };
+  return { text: rest, unit: new RegExp("^(?:" + NIGHT + ")$", "i").test(m[1]) ? "night" : "person" };
+}
+
+/** Reads a typed price such as "792.75", "HK$220", "¥120", "80元", "CNY 80" or "JPY 22,000／晚". "免費" or no number gives nothing. */
 export function parsePrice(text: string, fallback: string): Money | undefined {
+  text = priceUnit(text).text;
   const raw = (text || "").replace(/,/g, "").trim();
   // Accept one amount with a supported currency marker, never extract a digit from prose.
   const marker = "(?:" + currencies.join("|") + "|HK\\$|NT\\$|US\\$|S\\$|A\\$|RMB|港幣|港元|港紙|新台幣|台幣|美元|美金|新加坡|澳元|澳幣|日圓|日元|円|韓圜|韓元|泰銖|歐元|英鎊|人民幣|元|蚊|[¥￥₩฿€£$])";
@@ -155,7 +171,11 @@ export function questCharges(e: QuestEntry, d: Data): QuestCharge[] {
     const n = tripPeople(t).length;
     add("quest:" + e.id, `門票：${e.name}`, read(e.ticket), n, n + " 人");
     add("questride:" + e.id, `遊玩項目：${e.name}`, read(e.ride), n, n + " 人");
-  } else add("quest:" + e.id, e.name, read(e.price), 1, "");
+  } else {
+    // A food price is the whole bill, unless it says per person ("¥80/人"), then it counts for everyone.
+    const n = priceUnit(e.price).unit === "person" ? tripPeople(t).length : 1;
+    add("quest:" + e.id, e.name, read(e.price), n, n + " 人");
+  }
   return out;
 }
 

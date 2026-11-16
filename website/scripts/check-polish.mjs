@@ -26,6 +26,11 @@ assert.ok(link.startsWith('https://example.test/#share='));assert.ok(link.length
 const back=await readShared(link.slice(link.indexOf('#')));
 assert.deepEqual(back,plan);
 await assert.rejects(readShared('#share=broken'));
+// Stop notes and rain plans stay out unless asked for.
+{const n=structuredClone(t);n.stops[0].note='門鎖密碼 5566';n.stops[0].planB='改去商場';
+ const off=JSON.stringify(planOf(n));assert.ok(!off.includes('5566')&&!off.includes('改去商場'),'notes off by default');
+ const on=planOf(n,{notes:true});assert.equal(on.stops.find(s=>s.n===n.stops[0].title).o,'門鎖密碼 5566');
+ const l2=await shareLink(n,'https://example.test',{notes:true});assert.deepEqual(await readShared(l2.slice(l2.indexOf('#'))),on);}
 // Packing templates have no duplicates inside a template.
 for(const p of PACK_TEMPLATES)assert.equal(new Set(p.items).size,p.items.length,p.name);
 console.log('PASS: full demo trip, multi-photo diary validation, private-safe share link round trip and packing templates.');

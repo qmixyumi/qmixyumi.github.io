@@ -1,25 +1,27 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {Copy,Share2,Navigation,X} from 'lucide-react';
 import type {Trip} from './model';
 import {kinds,dateAt,days} from './model';
 import './share.css';
 /** A read-only snapshot of one trip, packed into the link itself (after #, so it never reaches any server).
- * It holds the plan only: no spending, diary, photos, booking numbers or seats. */
+ * It holds the plan only: no spending, diary, photos, booking numbers or seats.
+ * Stop notes and rain plans are left out unless the person ticks the box, since people often write door codes or booking numbers there. */
 type SharedStop={d:number;t:string;e:string;n:string;k:string;p:string;o:string;b:string;la?:number;ln?:number};
 type SharedTicket={y:string;f:string;to:string;dep:string;arr:string;no:string};
 export type SharedPlan={v:1;name:string;dest:string;start:string;end:string;zone:string;stops:SharedStop[];tickets:SharedTicket[];at:string};
 const ticketLabel:Record<string,string>={flight:'✈ 飛機',train:'🚆 火車','high-speed':'🚄 高鐵'};
-export function planOf(trip:Trip):SharedPlan{
- const stops=trip.stops.filter(s=>!s.deletedAt&&s.status!=='取消').sort((a,b)=>a.day-b.day||a.time.localeCompare(b.time)).map(s=>({d:s.day,t:s.time,e:s.end||'',n:s.title,k:s.kind,p:s.place||'',o:s.note||'',b:s.planB||'',...(typeof s.lat==='number'&&typeof s.lng==='number'?{la:Math.round(s.lat*1e5)/1e5,ln:Math.round(s.lng*1e5)/1e5}:{})}));
+export type ShareOptions={notes?:boolean};
+export function planOf(trip:Trip,opt:ShareOptions={}):SharedPlan{
+ const stops=trip.stops.filter(s=>!s.deletedAt&&s.status!=='取消').sort((a,b)=>a.day-b.day||a.time.localeCompare(b.time)).map(s=>({d:s.day,t:s.time,e:s.end||'',n:s.title,k:s.kind,p:s.place||'',o:opt.notes?s.note||'':'',b:opt.notes?s.planB||'':'',...(typeof s.lat==='number'&&typeof s.lng==='number'?{la:Math.round(s.lat*1e5)/1e5,ln:Math.round(s.lng*1e5)/1e5}:{})}));
  const tickets=(trip.tickets||[]).filter(t=>!t.deletedAt).map(t=>({y:t.type,f:t.from,to:t.to,dep:t.departure,arr:t.arrival,no:t.number}));
  return {v:1,name:trip.name,dest:trip.destination,start:trip.start,end:trip.end,zone:trip.timezone||'',stops,tickets,at:new Date().toISOString().slice(0,10)};
 }
 const b64url=(bytes:Uint8Array)=>{let s='';for(let i=0;i<bytes.length;i+=0x8000)s+=String.fromCharCode(...bytes.subarray(i,i+0x8000));return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')};
 const fromB64url=(s:string)=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
 async function pipe(bytes:Uint8Array,stream:CompressionStream|DecompressionStream){return new Uint8Array(await new Response(new Blob([bytes as BlobPart]).stream().pipeThrough(stream)).arrayBuffer())}
-export async function shareLink(trip:Trip,origin=location.origin){
- const json=new TextEncoder().encode(JSON.stringify(planOf(trip)));
+export async function shareLink(trip:Trip,origin=location.origin,opt:ShareOptions={}){
+ const json=new TextEncoder().encode(JSON.stringify(planOf(trip,opt)));
  return origin+'/#share='+b64url(await pipe(json,new CompressionStream('deflate-raw')));
 }
 export async function readShared(hash:string):Promise<SharedPlan>{
@@ -49,13 +51,17 @@ export function SharedView(){
 }
 /** Button + small panel used inside the app to make the link. */
 export function ShareTrip({trip}:{trip:Trip}){
- const [open,setOpen]=useState(false),[link,setLink]=useState(''),[msg,setMsg]=useState('');
- async function make(){setOpen(true);setMsg('');try{const l=await shareLink(trip);setLink(l);if(l.length>12000)setMsg('行程好長，部分通訊程式可能會截短條連結；可以改用「複製連結」再貼上。')}catch{setMsg('呢個瀏覽器做唔到分享連結，請更新瀏覽器再試。')}}
+ const [open,setOpen]=useState(false),[link,setLink]=useState(''),[msg,setMsg]=useState(''),[withNotes,setWithNotes]=useState(false);
+ const plan=planOf(trip,{notes:withNotes});const noteCount=planOf(trip,{notes:true}).stops.filter(s=>s.o||s.b).length;const shownNotes=plan.stops.filter(s=>s.o||s.b);
+ const req=useRef(0);
+ async function make(notes=withNotes){const n=++req.current;setOpen(true);setMsg('');setLink('');try{const l=await shareLink(trip,location.origin,{notes});if(n!==req.current)return;setLink(l);if(l.length>12000)setMsg('行程好長，部分通訊程式可能會截短條連結；可以改用「複製連結」再貼上。')}catch{setMsg('呢個瀏覽器做唔到分享連結，請更新瀏覽器再試。')}}
  return <>
-  <button className="secondary" onClick={make}><Share2 size={15}/> 分享行程</button>
+  <button className="secondary" onClick={()=>{setWithNotes(false);void make(false)}}><Share2 size={15}/> 分享行程</button>
   {open&&<div className="share-panel" role="dialog" aria-label="分享行程">
    <div className="section-title"><h3>俾朋友睇嘅唯讀連結</h3><button className="icon-btn" aria-label="關閉" onClick={()=>setOpen(false)}><X size={18}/></button></div>
-   <p className="muted">朋友唔使登入都睇到每日行程、地點同交通班次。唔會包括旅費、日記、相片、預約編號同座位。連結係而家嘅快照，之後改咗行程要再分享一次。</p>
+   <label className="share-notes-opt"><input type="checkbox" checked={withNotes} disabled={!noteCount} onChange={e=>{setWithNotes(e.target.checked);void make(e.target.checked)}}/> 包含行程備註及雨天備案{noteCount?`（${noteCount} 個行程有寫）`:'（冇行程寫咗）'}</label>
+   <div className="share-summary"><b>今次會分享：</b><ul><li>✓ {plan.stops.length} 個行程嘅名稱、時間同地點</li>{plan.tickets.length>0&&<li>✓ {plan.tickets.length} 張交通票嘅班次同起訖站</li>}<li>{withNotes?`⚠ ${shownNotes.length} 個行程嘅備註及雨天備案（全文）`:'✕ 行程備註及雨天備案'}</li><li>✕ 旅費、日記、相片、預約編號、座位</li></ul>{withNotes&&shownNotes.length>0&&<details><summary>睇會分享嘅備註全文</summary>{shownNotes.map((s,i)=><p key={i}><b>DAY {s.d} {s.n}</b>{s.o&&<span>備註：{s.o}</span>}{s.b&&<span>雨天備案：{s.b}</span>}</p>)}</details>}{withNotes&&<small>⚠ 備註入面如果有門鎖密碼、訂單號碼等私人資料，拎到連結嘅人都會睇到。</small>}</div>
+   <p className="muted">朋友唔使登入都睇得到。連結係而家嘅快照，之後改咗行程要再分享一次。</p>
    {link&&<div className="actions">{typeof navigator.share==='function'&&<button className="primary" onClick={()=>navigator.share({title:trip.name,text:trip.name+' 行程',url:link}).catch(()=>{})}><Share2 size={15}/> 分享</button>}<button className="secondary" onClick={async()=>{try{await navigator.clipboard.writeText(link);setMsg('已複製連結')}catch{setMsg('未能自動複製，請長按下面條連結複製')}}}><Copy size={15}/> 複製連結</button><a className="text-btn" href={link} target="_blank" rel="noreferrer">預覽</a></div>}
    {link&&<input className="share-url" readOnly value={link} onFocus={e=>e.currentTarget.select()} aria-label="分享連結"/>}
    {msg&&<p role="status">{msg}</p>}

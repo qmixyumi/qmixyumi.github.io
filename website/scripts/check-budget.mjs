@@ -150,3 +150,16 @@ console.log('PASS: deleted links never migrate; deleted/cancelled stops stop cha
  delete s.deletedAt;syncAll(d);assert.equal(t.expenses.filter(e=>!e.deletedAt).length,2);
  assert.ok(validData(d),'retained expenses survive backup validation');
 }
+// Kept spending: the original automatic row must not be restorable from the recycle bin (it would count twice).
+{
+ const {trashRows,expenseAlreadyCounted}=await load('app/travel-tools.ts');
+ const d=demo(),t=d.trips[0];t.expenses=[];t.tickets=[];t.stops=[t.stops[0]];
+ const s=t.stops[0];s.cost={amount:200,currency:'HKD'};syncAll(d);const orig=t.expenses[0].id;
+ retainStopExpenses(d,t,s.id);s.deletedAt='2026-11-13T00:00:00Z';syncAll(d);delete s.deletedAt;syncAll(d);
+ assert.equal(t.expenses.filter(e=>!e.deletedAt).reduce((n,e)=>n+e.amount,0),200);
+ assert.ok(!trashRows(d).some(r=>r.id===orig),'kept original is not offered in the recycle bin');
+ assert.ok(expenseAlreadyCounted(t,orig),'restoring the kept original is refused');
+ const other={id:'x1',title:'晚餐',amount:80,currency:'HKD',rate:1,payer:'QMI',people:['QMI'],status:'已付',category:'餐飲',date:t.start,deletedAt:'2026-11-13T00:00:00Z'};t.expenses.push(other);
+ assert.ok(trashRows(d).some(r=>r.id==='x1')&&!expenseAlreadyCounted(t,'x1'),'ordinary recycled spending can still be restored');
+ console.log('PASS: kept spending cannot be restored twice from the recycle bin.');
+}

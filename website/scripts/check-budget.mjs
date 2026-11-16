@@ -8,7 +8,7 @@ const {demo,validData,tripPeople}=model;
 const amountFn='const amount=v=>new Intl.NumberFormat("en-HK",{maximumFractionDigits:2}).format(v);';
 const {balances,perPerson,transfers}=await load('app/split.ts',amountFn);
 const helpers=amountFn+'const kinds='+JSON.stringify(model.kinds)+';const dateAt=(t,d)=>new Date(Date.parse(t.start)+(d-1)*86400000).toISOString().slice(0,10);const tripPeople=t=>t.people&&t.people.length?t.people:["QMI","YUMI"];const currencies=["HKD","CNY"];const colorOf=()=>"#000";const travelIcon=()=>"";const _jsx=()=>null,_jsxs=()=>null,_Fragment=null;const useState=v=>[v,()=>{}],useEffect=()=>{},useRef=v=>({current:v});';
-const {retainStopExpenses,syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,questCurrency,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
+const {retainStopExpenses,syncAuto,syncAll,missingRates,autoSources,tripCurrency,zoneCurrency,usualCurrency,parsePrice,priceUnit,questCurrency,questLink,questCharges,likelyDuplicates}=await load('app/budget.tsx',helpers);
 
 const d=demo(),t=d.trips[0];
 t.expenses=[];t.tickets=[];
@@ -67,11 +67,18 @@ assert.deepEqual(parsePrice('¥68','HKD'),{amount:68,currency:'CNY'});
 assert.deepEqual(parsePrice('80元','CNY'),{amount:80,currency:'CNY'});assert.deepEqual(parsePrice('80元','JPY'),{amount:80,currency:'CNY'});
 assert.deepEqual(parsePrice('CNY 45','HKD'),{amount:45,currency:'CNY'});
 assert.equal(parsePrice('免費','HKD'),undefined);
+// Per-night / per-person words people type next to a price are read, not rejected.
+for(const input of ['HKD 22,000／晚','HKD 22,000/晚','HKD22000 每晚','每晚 HK$22,000','HK$22,000 一晚','HKD 22000 per night','HKD 22,000 / night','22000港元／夜'])
+ assert.deepEqual(parsePrice(input,'CNY'),{amount:22000,currency:'HKD'},'per night: '+input);
+assert.deepEqual(parsePrice('¥80/人','HKD'),{amount:80,currency:'CNY'});
+assert.deepEqual(parsePrice('80元每位','CNY'),{amount:80,currency:'CNY'});
+assert.equal(parsePrice('／晚','HKD'),undefined);assert.equal(parsePrice('每晚','HKD'),undefined);
+assert.equal(parsePrice('HKD 100／晚 HKD 200','HKD'),undefined,'two amounts still rejected');
 {const q=demo();const t=q.trips[0];t.id='cs';t.name='長沙';t.start='2026-11-21';t.end='2026-11-23';t.expenses=[];t.tickets=[];t.rates={CNY:1.1};
  t.stops=[{id:'h1',day:1,time:'15:00',end:'',title:'單一酒店',kind:'酒店',place:'',note:'',status:'待定',travel:'',minutes:0,rating:{}},{id:'f1',day:2,time:'12:00',end:'',title:'文和友',kind:'美食',place:'',note:'',status:'待定',travel:'',minutes:0,rating:{},cost:{amount:300,currency:'CNY'}}];
  const base={folder:'',region:'',category:'',room:'',price:'',ticket:'',ride:'',duration:'',seasons:[],spice:'',review:'',notes:'',photo:'',breakfast:false,scores:{},created:1};
  q.quest={version:1,folders:[],metrics:Object.fromEntries(['hotel','spot','food'].map(k=>[k,[{id:'m',name:'m',color:'#aaaaaa',reverse:false}]])),entries:[
-  {...base,id:'qh',kind:'hotel',name:'單一酒店',price:'792.75'},
+  {...base,id:'qh',kind:'hotel',name:'單一酒店',price:'792.75／晚'},
   {...base,id:'qs',kind:'spot',name:'橘子洲',ticket:'¥50',ride:'免費',trip:'cs'},
   {...base,id:'qf',kind:'food',name:'文和友',price:'¥200'},
   {...base,id:'qn',kind:'food',name:'無名小店',price:'¥30'},
@@ -85,6 +92,7 @@ assert.equal(parsePrice('免費','HKD'),undefined);
  assert.equal(t.expenses.some(e=>e.source==='quest:qf'),false,'stop already has its own cost: not counted twice');
  assert.ok(t.expenses.some(e=>e.source==='stop:f1'));
  assert.equal(t.expenses.some(e=>/qn|qx/.test(e.source||'')),false,'unlinked and opted-out entries stay out');
+ {const fq=structuredClone(q);const f=fq.quest.entries.find(e=>e.kind==='food');const ft=fq.trips.find(x=>x.id==='cs');const fs=ft.stops.find(st=>st.kind==='美食'&&st.cost);if(fs)delete fs.cost;f.price='CNY 80/人';syncAll(fq);const r=ft.expenses.find(e=>e.source==='quest:'+f.id);assert.ok(r,'per-person food counted');assert.equal(r.amount,160,'per-person food price × 2 travellers');}
  q.quest.entries[0].nights=1;syncAll(q);assert.equal(t.expenses.find(e=>e.source==='quest:qh').amount,792.75,'typed nights win');
  assert.equal(questCurrency(q.quest.entries[0],q),'CNY','no currency picked: the trip currency');
  q.quest.entries[0].currency='HKD';syncAll(q);{const r=t.expenses.find(e=>e.source==='quest:qh');assert.equal(r.currency,'HKD','picked currency wins');assert.equal(r.rate,1);}

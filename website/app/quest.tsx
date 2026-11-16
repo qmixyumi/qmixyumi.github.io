@@ -9,7 +9,7 @@ import './quest-navy.css';
 import './quest-scores.css';
 import type {Stop,Trip,Data} from './model';
 import {amount} from './model';
-import {questLink,questCharges,hotelNights,questCurrency,parsePrice} from './budget';
+import {questLink,questCharges,hotelNights,questCurrency,parsePrice,priceUnit} from './budget';
 import {currencies} from './extras';
 
 const stopKind:Record<string,QuestKind>={酒店:'hotel',美食:'food',景點:'spot'};
@@ -198,7 +198,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
    <p className="q-muted">{all.length?'揀一間酒店開始評分':'未有酒店：喺上面輸入第一間酒店名稱就可以開始評分。'}</p>
    {folders.length>0&&<div className="q-folder-box"><div className="q-folder-tabs"><button className={folder==='all'?'on':''} onClick={()=>setFolder('all')}>全部</button>{folders.map(f=><button key={f.id} className={folder===f.id?'on':''} onClick={()=>setFolder(f.id)}>{f.name}</button>)}{all.some(e=>!e.folder)&&folders.length>0&&<button className={folder==='none'?'on':''} onClick={()=>setFolder('none')}>未分類</button>}</div>
     </div>}
-   <div className="q-hotel-items">{hotelList.map(e=>{const s=score(e),gr=questGrade(s);return <div key={e.id} id={'quest-'+e.id} className={'q-hotel-item'+(hotel?.id===e.id?' on':'')}><button className="q-hotel-pick" onClick={()=>setHotelId(e.id)}><strong>{e.name}</strong><span className="q-hotel-meta"><Stars value={s}/><span className="q-grade-chip"><b>{gr==='—'?'?':gr}</b>級</span><span>{s===null?'待評':num(s)+' 分'}</span></span><small>{e.room&&`房型「${e.room}」`}{e.room&&e.price&&' · '}{e.price&&<><b className="q-num">{e.price}</b>／晚</>}</small></button><button className="q-x" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><X/></button></div>})}{!hotelList.length&&<p className="q-muted q-pad">{all.length?'呢個分類未有酒店。':''}</p>}</div>
+   <div className="q-hotel-items">{hotelList.map(e=>{const s=score(e),gr=questGrade(s);return <div key={e.id} id={'quest-'+e.id} className={'q-hotel-item'+(hotel?.id===e.id?' on':'')}><button className="q-hotel-pick" onClick={()=>setHotelId(e.id)}><strong>{e.name}</strong><span className="q-hotel-meta"><Stars value={s}/><span className="q-grade-chip"><b>{gr==='—'?'?':gr}</b>級</span><span>{s===null?'待評':num(s)+' 分'}</span></span><small>{e.room&&`房型「${e.room}」`}{e.room&&e.price&&' · '}{e.price&&<><b className="q-num">{priceUnit(e.price).text}</b>／晚</>}</small></button><button className="q-x" aria-label={'刪除 '+e.name} onClick={()=>erase(e)}><X/></button></div>})}{!hotelList.length&&<p className="q-muted q-pad">{all.length?'呢個分類未有酒店。':''}</p>}</div>
    <details className="q-hotel-settings"><summary>分類同評分指標（可唔使理）</summary><p className="q-muted">分類用嚟將酒店分組，例如「東京酒店」「北疆酒店」。</p><div className="q-folder-actions"><button className="q-btn" onClick={()=>setFolderForm({id:'',name:''})}><Plus/> 新增分類</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>setFolderForm({id:folder,name:folderName(folder)})}>分類改名</button><button className="q-btn" disabled={!folders.some(f=>f.id===folder)} onClick={()=>removeFolder(folder)}>刪除分類</button><button className="q-btn" onClick={()=>setMetrics(structuredClone(kindMetrics))}><SlidersHorizontal/> 評分指標</button></div></details>
   </section>
   {hotel?<>

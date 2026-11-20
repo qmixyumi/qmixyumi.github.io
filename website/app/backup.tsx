@@ -55,11 +55,29 @@ async function buildZip(data:Data,items:Item[],progress:(s:string)=>void){
 
 export function FullBackup({data,onRestore,onMessage}:{data:Data;onRestore:(d:Data,files:number)=>void;onMessage:(s:string)=>void}){
  const [busy,setBusy]=useState(''),[failed,setFailed]=useState<Failure[]>([]);
- async function exportZip(){setBusy('正在準備…');setFailed([]);try{const items=fileItems(data);const r=await buildZip(data,items,setBusy);save(r.zip,'qmi-yumi-完整備份-'+new Date().toISOString().slice(0,10)+'.zip');setFailed(r.failed);onMessage(r.failed.length?`ZIP 已下載，${r.count} 個原檔已包括；${r.failed.length} 個未能下載，見下面清單`:`ZIP 已下載，包括資料同 ${r.count} 個原檔`)}catch(e){onMessage(e instanceof Error?e.message:'ZIP 備份失敗')}finally{setBusy('')}}
+ async function exportZip(){setBusy('正在準備…');setFailed([]);try{const items=fileItems(data);const r=await buildZip(data,items,setBusy);save(r.zip,'qmi-yumi-'+(r.failed.length?`部分備份-缺${r.failed.length}個原檔`:'完整備份')+'-'+new Date().toISOString().slice(0,10)+'.zip');setFailed(r.failed);onMessage(r.failed.length?`ZIP 已下載，${r.count} 個原檔已包括；${r.failed.length} 個未能下載，見下面清單`:`ZIP 已下載，包括資料同 ${r.count} 個原檔`)}catch(e){onMessage(e instanceof Error?e.message:'ZIP 備份失敗')}finally{setBusy('')}}
  async function restoreJson(file:File){if(file.size>12000000)return onMessage('備份上限 12MB');try{const d=JSON.parse(await file.text());if(!validData(d))throw Error();onRestore(d,0)}catch{onMessage('備份格式無效，現有資料未有改動')}}
  async function restoreZip(file:File){setBusy('讀取 ZIP…');try{const files=await readZip(await file.arrayBuffer());const json=files.get('backup.json');if(!json)throw Error('ZIP 入面搵唔到 backup.json');const d=JSON.parse(new TextDecoder().decode(json));if(!validData(d))throw Error('備份資料格式無效，現有資料未有改動');
-  const manifest=JSON.parse(new TextDecoder().decode(files.get('files.json')||new TextEncoder().encode('[]'))) as {id:string;path:string;type:string;size:number}[];let stored=0;
-  for(const m of manifest){const bytes=files.get(m.path);if(!bytes||bytes.length!==m.size)continue;setBusy(`還原原檔 ${stored+1}/${manifest.length}`);await storeBlob(m.id,new Blob([bytes as BlobPart],{type:m.type}));stored++}
+  const listing=files.get('files.json');
+  const manifest:{id:string;path:string;size:number}[]=listing?JSON.parse(new TextDecoder().decode(listing)):[];
+  if(!Array.isArray(manifest))throw Error('原檔清單格式無效');
+  const byId=new Map(manifest.map(m=>[m.id,m]));
+  const originals:{ref:Attachment;bytes:Uint8Array}[]=[];
+  const issues:string[]=[];
+  if(!listing)issues.push('缺少原檔清單 files.json');
+  for(const {ref} of fileItems(d)){
+   const entry=byId.get(ref.id);
+   const bytes=entry&&files.get(entry.path);
+   if(!entry||!bytes||entry.size!==ref.size||bytes.length!==ref.size)issues.push(ref.name);
+   else originals.push({ref,bytes});
+  }
+  if(issues.length&&!window.confirm('備份未齊，以下項目缺少或大小不符：\n'+issues.join('\n')+'\n繼續還原現有內容？'))return;
+  let stored=0;
+  for(const {ref,bytes} of originals){
+   setBusy(`還原原檔 ${stored+1}/${originals.length}`);
+   await storeBlob(ref.id,new Blob([bytes as BlobPart],{type:ref.type}));
+   stored++;
+  }
   onRestore(d,stored)}catch(e){onMessage(e instanceof Error?e.message:'ZIP 還原失敗')}finally{setBusy('')}}
  return <div className="full-backup">
   <button className="primary" disabled={!!busy} onClick={exportZip}><PackageCheck size={17}/> 完整備份（包括相片及附件）</button>
@@ -79,7 +97,7 @@ export function OfflinePrep({data,trip,signedIn,located,total}:{data:Data;trip:T
  async function prepare(){setBusy(true);setMsg('');let ok=0,bad=0;for(const r of rows){if(r.state==='ready'){ok++;continue}setRows(rs=>rs.map(x=>x.item.ref.id===r.item.ref.id?{...x,state:'busy'}:x));
    try{await fetchOriginal(r.item,true);ok++;setRows(rs=>rs.map(x=>x.item.ref.id===r.item.ref.id?{...x,state:'ready',reason:undefined}:x))}catch(e){bad++;setRows(rs=>rs.map(x=>x.item.ref.id===r.item.ref.id?{...x,state:'failed',reason:e instanceof Error?e.message:'未能下載'}:x))}}
   setBusy(false);setMsg(bad?`${ok} 個已準備，${bad} 個未完成，見下面原因`:`全部 ${ok} 個原檔已存喺呢部裝置，冇網都睇到`)}
- async function zipTrip(){setZipBusy('準備中…');try{const one={...data,trips:[trip]};const r=await buildZip(one,fileItems(data,[trip]),setZipBusy);save(r.zip,safe(trip.name)+'-離線包.zip');setMsg(r.failed.length?`離線包已下載，${r.failed.length} 個原檔未能包括`:'離線包已下載，可以存喺手機「檔案」')}finally{setZipBusy('')}}
+ async function zipTrip(){setZipBusy('準備中…');try{const one={...data,trips:[trip]};const r=await buildZip(one,fileItems(data,[trip]),setZipBusy);save(r.zip,safe(trip.name)+(r.failed.length?`-部分離線包-缺${r.failed.length}個原檔`:'-離線包')+'.zip');setMsg(r.failed.length?`離線包已下載，${r.failed.length} 個原檔未能包括`:'離線包已下載，可以存喺手機「檔案」')}finally{setZipBusy('')}}
  const ready=rows.filter(r=>r.state==='ready').length;
  const checks:[boolean,string,string][]=[
   [installed,'網站已可離線開啟',installed?'已安裝或已載入離線版本':'用瀏覽器開一次網站，或者「加入主畫面」'],

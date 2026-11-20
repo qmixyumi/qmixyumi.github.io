@@ -95,11 +95,12 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
  useEffect(()=>()=>exports.forEach(f=>URL.revokeObjectURL(f.url)),[exports]);
  // A half-written review is kept on this device until it is saved or deliberately discarded.
  const [saved,setSaved]=useState(()=>readValue<QuestEntry>(DRAFT));const edited=useRef(false);
- useEffect(()=>{if(draft&&edited.current)saveValue(DRAFT,draft)},[draft]);
+const [draftFailed,setDraftFailed]=useState(false);
+ useEffect(()=>{setDraftFailed(!!draft&&edited.current&&!saveValue(DRAFT,draft))},[draft]);
  useEffect(()=>{if(!focus)return;const id=focus.split('|')[0];const e=q.entries.find(x=>x.id===id);if(!e)return;setKind(e.kind);setFolder('all');setView('cards');if(e.kind==='hotel')setHotelId(e.id);setTimeout(()=>{const el=document.getElementById('quest-'+id);el?.scrollIntoView({behavior:'smooth',block:'center'});el?.classList.add('flash');setTimeout(()=>el?.classList.remove('flash'),2200)},80)},[focus]);
  const dialog=useRef<HTMLDialogElement>(null);const photoRequest=useRef(0);const hotelPhoto=useRef<HTMLInputElement>(null);const theme=themes[kind];const open=!!draft||!!metrics||!!folderForm;
  useEffect(()=>{if(open)dialog.current?.showModal();else dialog.current?.close()},[open]);
- function close(discard=false){photoRequest.current++;setPhotoBusy(false);if(draft&&edited.current&&!discard){setSaved(readValue<QuestEntry>(DRAFT));setNotice('未儲存嘅評鑑已暫存做草稿，可以喺上面繼續編輯。')}else if(discard)saveValue(DRAFT,null);edited.current=false;setDraft(null);setMetrics(null);setFolderForm(null)}
+ function close(discard=false){photoRequest.current++;setPhotoBusy(false);if(draft&&edited.current&&!discard){if(!saveValue(DRAFT,draft)){setDraftFailed(true);return}setSaved(readValue<QuestEntry>(DRAFT));setNotice('未儲存嘅評鑑已暫存做草稿，可以喺上面繼續編輯。')}else if(discard)saveValue(DRAFT,null);edited.current=false;setDraft(null);setMetrics(null);setFolderForm(null)}
  function cancel(){if(draft&&edited.current&&!window.confirm('放棄未儲存嘅修改？'))return;close(true)}
  function openDraft(e:QuestEntry){edited.current=false;setDraft(e)}
  function commit(fn:(next:QuestData)=>void){const next=structuredClone(q);fn(next);onChange(next)}
@@ -232,7 +233,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
  function save(e:React.FormEvent){e.preventDefault();if(!draft||photoBusy)return;const entry={...draft,name:draft.name.trim()};if(!entry.name)return;commit(n=>{const i=n.entries.findIndex(x=>x.id===entry.id);if(i<0)n.entries.push(entry);else n.entries[i]=entry});close(true)}
  const set=(p:Partial<QuestEntry>)=>{edited.current=true;setDraft(d=>d?{...d,...p}:d)};
  const setDraftScore=(id:string,v:number|null)=>{edited.current=true;setDraft(d=>d?shared(d,id,v):d)};
- function foodForm(d:QuestEntry){const level=d.level||'spice';return <form onSubmit={save} className="q-form">
+ function foodForm(d:QuestEntry){const level=d.level||'spice';return <form onSubmit={save} className="q-form">{draftFailed&&<p role="alert">草稿未能儲存，離開前請先複製內容。</p>}
   <h2 className="q-form-title">{isNew?'新增美食':'編輯美食'}</h2>
   <label>名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder="例：炒粿條"/></label>
   <label>分類<select value={d.category} onChange={e=>set({category:e.target.value})}>{[...new Set([...FOOD_TYPES,d.category].filter(Boolean))].map(c=><option key={c}>{c}</option>)}</select></label>
@@ -249,7 +250,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   {d.review&&<label>感想<textarea maxLength={3000} value={d.review} onChange={e=>set({review:e.target.value})}/></label>}
   <div className="q-form-actions"><button type="button" className="q-btn q-blue" onClick={cancel}>取消</button><button className="q-btn q-green" disabled={photoBusy}>{isNew?'新增美食':'保存修改'}</button></div>
  </form>}
- function spotForm(d:QuestEntry){const ride=isRide(d),ms=metricsFor(d,kindMetrics);return <form onSubmit={save} className="q-form q-spot-form">
+ function spotForm(d:QuestEntry){const ride=isRide(d),ms=metricsFor(d,kindMetrics);return <form onSubmit={save} className="q-form q-spot-form">{draftFailed&&<p role="alert">草稿未能儲存，離開前請先複製內容。</p>}
   <h2 className="q-form-title">{isNew?'添加景點':'編輯景點'}</h2>
   <p className="q-muted">帶 * 為必填。點擊或拖動評分條設定 1-10 分（10 分最好）。景點與機動遊戲各有自己的評分指標。</p>
   <label>名稱 *<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})} placeholder={ride?'例：世界最大翻斗水桶':'例：維多利亞港'}/></label>
@@ -267,7 +268,7 @@ export default function Quest({value,onChange,stops=[],tripName='',focus='',trip
   <BudgetMore entry={d} data={budgetData} trips={trips} onChange={set}/>
   <div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green" disabled={photoBusy}>儲存</button></div>
  </form>}
- function hotelForm(d:QuestEntry){return <form onSubmit={save} className="q-form"><h2 className="q-form-title">{isNew?'新增酒店':'編輯酒店'}</h2><label>酒店名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})}/></label><div className="q-field"><span>記入旅費</span><p className="q-muted">呢度設定只喺編輯時見到，評分頁面唔會顯示，方便截圖。</p><BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/></div><div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green">儲存</button></div></form>}
+ function hotelForm(d:QuestEntry){return <form onSubmit={save} className="q-form">{draftFailed&&<p role="alert">草稿未能儲存，離開前請先複製內容。</p>}<h2 className="q-form-title">{isNew?'新增酒店':'編輯酒店'}</h2><label>酒店名稱<input required maxLength={100} value={d.name} onChange={e=>set({name:e.target.value})}/></label><div className="q-field"><span>記入旅費</span><p className="q-muted">呢度設定只喺編輯時見到，評分頁面唔會顯示，方便截圖。</p><BudgetLine entry={d} data={budgetData} trips={trips} onChange={set}/></div><div className="q-form-actions"><button type="button" className="q-btn" onClick={cancel}>取消</button><button className="q-btn q-green">儲存</button></div></form>}
 
  return <section className={`quest qk-${kind}${navy?' q-navy':''}`}>
   <nav className="q-kinds" aria-label="評鑑類別">{(['hotel','spot','food'] as QuestKind[]).map(k=><button key={k} className={k===kind?'on':''} onClick={()=>switchKind(k)}>{k==='hotel'?<BedDouble/>:k==='spot'?<Mountain/>:<UtensilsCrossed/>}{questTitles[k]}</button>)}<small>跨旅程共用圖鑑</small><button className="q-look" aria-pressed={navy} onClick={toggleLook}>{navy?'切換：米白模式':'切換：藍色模式'}</button></nav>
